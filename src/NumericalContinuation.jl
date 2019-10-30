@@ -1,5 +1,7 @@
 module NumericalContinuation
 
-greet() = print("Hello World!")
+include("ProblemStructures.jl")
+
+include("AlgebraicProblems.jl")
 
 end # module
