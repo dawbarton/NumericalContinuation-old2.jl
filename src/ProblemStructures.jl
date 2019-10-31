@@ -298,8 +298,8 @@ struct MonitorFunction{F}
     vidx::Int64
 end
 
-passproblem(::Type{MonitorFunction}) = true
-passdata(::Type{MonitorFunction}) = true
+passproblem(::Type{MonitorFunction{F}} where F) = true
+passdata(::Type{MonitorFunction{F}} where F) = true
 
 function (mfunc::MonitorFunction)(res, prob, data, um, u...)
     mu = isempty(um) ? data[1][] : um[1]
