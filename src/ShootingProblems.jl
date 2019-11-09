@@ -42,7 +42,7 @@ function addshootingproblem!(prob::ProblemStructure, name::String, f, u0, p0, ts
     # Create the necessary continuation variables and add the function
     uidx = addvar!(prob, "$(name).u", length(u0), u0=u0)
     pidx = addvar!(prob, "$(name).p", length(p0), u0=p0)
-    tidx = addvar!(prob, "$(name).tspan", 2, u0=_tspan))
+    tidx = addvar!(prob, "$(name).tspan", 2, u0=_tspan)
     fidx = addfunc!(prob, name, alg, (uidx, pidx, tidx), length(u0), kind=:embedded)
     addpars!(prob, _pnames, pidx, active=false)
     addpars!(prob, ("$(name).t0", "$(name).t1"), tidx, active=false)
