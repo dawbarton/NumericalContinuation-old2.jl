@@ -204,6 +204,12 @@ copyfuncdata(func, data) = deepcopy(data)
 
 #--- Specialisations for speed of evaluation of continuation functions
 
+# Replace with a CFunction? Still needs the tuple of functions but dependencies could be done away with
+# julia> let f = (x)->x * x
+#            ptr = @cfunction $f Cdouble (Cdouble,)
+#            GC.@preserve ptr ccall(Base.unsafe_convert(Ptr{Cvoid}, ptr), Cdouble, (Cdouble,), 2.0)
+#        end
+
 struct SpecialisedFunctions{N, D, F}
     wrapped::Functions
     funcs::F
