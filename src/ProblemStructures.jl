@@ -22,7 +22,7 @@ struct Vars
     lookup::Dict{String, Int64}
 end
 
-Vars() = Vars(String[], Int64[], UnitRange{Int64}[], Any[], Any[], Dict{String, Int64}())
+Vars() = Vars(String["all"], Int64[0], UnitRange{Int64}[1:0], Any[()], Any[()], Dict{String, Int64}("all"=>1))
 
 # Functions operating on individual variables
 
@@ -60,6 +60,8 @@ function setdim!(vars::Vars, vidx::Int64, dim::Integer)
         vars.indices[i] = (last + 1):(last + vars.dims[i])
         last += vars.dims[i]
     end
+    vars.dims[1] = last
+    vars.indices[1] = 1:last
     return vars
 end
 
@@ -73,7 +75,7 @@ Base.length(vars::Vars) = length(vars.names)
 
 function getu0(T::Type{<: Number}, vars::Vars)
     u0 = Vector{Vector{T}}()
-    for vidx in eachindex(vars.u0)
+    for vidx in 2:length(vars.u0)
         if vars.dims[vidx] != 0
             if vars.u0[vidx] === nothing
                 push!(u0, zeros(T, vars.dims[vidx]))
@@ -91,7 +93,7 @@ getu0(vars::Vars) = getu0(Float64, vars)
 
 function gett0(T::Type{<: Number}, vars::Vars)
     t0 = Vector{Vector{T}}()
-    for vidx in eachindex(vars.t0)
+    for vidx in 2:length(vars.t0)
         if vars.dims[vidx] != 0
             if vars.t0[vidx] === nothing
                 push!(t0, zeros(T, vars.dims[vidx]))
