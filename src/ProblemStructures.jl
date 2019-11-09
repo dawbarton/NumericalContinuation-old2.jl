@@ -299,6 +299,31 @@ function addfunc!(prob::ProblemStructure, name::String, args...; kind::Symbol=:e
     end
 end
 
+function Base.show(io::IO, prob::ProblemStructure)
+    println(io, "ProblemStructure with $(length(prob.vars.names)-1) variables, $(length(prob.embedded.names)) embedded functions, and $(length(prob.nonembedded.names)) non-embedded functions.")
+    println(io, "\nVariables (total $(prob.vars.dims[1]) dims)")
+    for i in 2:length(prob.vars.names)
+        name = prob.vars.names[i]
+        dims = prob.vars.dims[i] == 1 ? "1 dim" : "$(prob.vars.dims[i]) dims"
+        println(io, "  → $name ($dims)")
+    end
+    println("\nEmbedded functions (total $(sum(prob.embedded.dims)) dims)")
+    for i in Base.OneTo(length(prob.embedded.names))
+        name = prob.embedded.names[i]
+        dims = prob.embedded.dims[i] == 1 ? "1 dim" : "$(prob.embedded.dims[i]) dims"
+        deps = join([prob.vars.names[dep] for dep in prob.embedded.deps[i]], ", ")
+        println(io, "  → $name ($dims; depends on $deps)")
+    end
+    println("\nNon-embedded functions (total $(sum(prob.nonembedded.dims)) dims)")
+    for i in Base.OneTo(length(prob.nonembedded.names))
+        name = prob.nonembedded.names[i]
+        dims = prob.nonembedded.dims[i] == 1 ? "1 dim" : "$(prob.nonembedded.dims[i]) dims"
+        deps = join([prob.vars.names[dep] for dep in prob.nonembedded.deps[i]], ", ")
+        println(io, "  → $name ($dims; depends on $deps)")
+    end
+    return nothing
+end
+
 #--- Monitor functions
 
 struct MonitorFunction{F}
