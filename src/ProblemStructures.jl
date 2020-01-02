@@ -299,7 +299,7 @@ function addfunc!(prob::ProblemStructure, name::String, args...; kind::Symbol=:e
     end
 end
 
-function Base.show(io::IO, prob::ProblemStructure)
+function Base.show(io::IO, ::MIME"text/plain", prob::ProblemStructure)
     println(io, "ProblemStructure with $(length(prob.vars.names)-1) variables, $(length(prob.embedded.names)) embedded functions, and $(length(prob.nonembedded.names)) non-embedded functions.")
     println(io, "\nVariables (total $(prob.vars.dims[1]) dims)")
     for i in 2:length(prob.vars.names)
