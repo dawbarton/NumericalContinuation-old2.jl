@@ -11,23 +11,23 @@ the form
 where `u` and `p` are the state variables and parameters respectively. Both `u`
 and `p` can be scalars or vectors.
 
-See [`addalgebraicproblem!`](@ref) for details.
+See [`add_algebraicproblem!`](@ref) for details.
 """
 module AlgebraicProblems
 
 using DocStringExtensions
-using ..ProblemStructures: ProblemStructure, addvar!, addfunc!, addpars!
+using ..ProblemStructures: ProblemStructure, add_var!, add_func!, add_pars!
 
-export addalgebraicproblem!
+export add_algebraicproblem!
 
 struct AlgebraicProblem{U, P, F}
     f!::F
 end
 
-_convertto(T, val) = val
-_convertto(::Type{<:Number}, val) = val[1]
+_convert_to(T, val) = val
+_convert_to(::Type{<:Number}, val) = val[1]
 
-(ap::AlgebraicProblem{U, P})(res, u, p) where {U, P} = ap.f!(res, _convertto(U, u), _convertto(P, p))
+(ap::AlgebraicProblem{U, P})(res, u, p) where {U, P} = ap.f!(res, _convert_to(U, u), _convert_to(P, p))
 
 """
 $SIGNATURES
@@ -57,10 +57,10 @@ not. It assumes that the function output is of the same dimension as `u`.
 
 ```
 prob = ProblemStructure()
-addalgebraicproblem!(prob, "cubic", (u, p) -> u^3 - p, 1.5, 1)  # u0 = 1.5, p0 = 1
+add_algebraicproblem!(prob, "cubic", (u, p) -> u^3 - p, 1.5, 1)  # u0 = 1.5, p0 = 1
 ```
 """
-function addalgebraicproblem!(prob::ProblemStructure, name::String, f, u0, p0; pnames=nothing)
+function add_algebraicproblem!(prob::ProblemStructure, name::String, f, u0, p0; pnames=nothing)
     # Determine whether f is in-place or not
     if any(method.nargs == 4 for method in methods(f))
         f! = f
@@ -77,10 +77,10 @@ function addalgebraicproblem!(prob::ProblemStructure, name::String, f, u0, p0; p
     P = p0 isa Number ? Number : Vector
     alg = AlgebraicProblem{U, P, typeof(f!)}(f!)
     # Create the necessary continuation variables and add the function
-    uidx = addvar!(prob, "$(name).u", length(u0), u0=(U === Number ? [u0] : u0))
-    pidx = addvar!(prob, "$(name).p", length(p0), u0=(P === Number ? [p0] : p0))
-    fidx = addfunc!(prob, name, alg, (uidx, pidx), length(u0), kind=:embedded)
-    addpars!(prob, _pnames, pidx, active=false)
+    uidx = add_var!(prob, "$(name).u", length(u0), u0=(U === Number ? [u0] : u0))
+    pidx = add_var!(prob, "$(name).p", length(p0), u0=(P === Number ? [p0] : p0))
+    fidx = add_func!(prob, name, alg, (uidx, pidx), length(u0), kind=:embedded)
+    add_pars!(prob, _pnames, pidx, active=false)
     return fidx
 end
 

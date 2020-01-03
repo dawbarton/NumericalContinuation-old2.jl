@@ -8,15 +8,15 @@ This assumes that the ODE takes a `Vector` or `SVector` input and produces a
 corresponding output. For small ODEs (i.e., fewer than around 20 dimensions)
 `SVector` inputs are often significantly faster.
 
-See [`addshootingproblem!`](@ref) for details.
+See [`add_shootingproblem!`](@ref) for details.
 """
 module ShootingProblems
 
 using DocStringExtensions
-using ..ProblemStructures: ProblemStructure, addvar!, addfunc!, addpars!
+using ..ProblemStructures: ProblemStructure, add_var!, add_func!, add_pars!
 using OrdinaryDiffEq: solve, remake, ODEProblem, Tsit5
 
-export addshootingproblem!
+export add_shootingproblem!
 
 struct ShootingProblem{T, S, C}
     odeprob::T
@@ -29,7 +29,7 @@ function (shoot::ShootingProblem)(res, u, p, tspan)
     res .= u .- sol[end]
 end
 
-function addshootingproblem!(prob::ProblemStructure, name::String, f, u0, p0, tspan; pnames=nothing, solver=Tsit5())
+function add_shootingproblem!(prob::ProblemStructure, name::String, f, u0, p0, tspan; pnames=nothing, solver=Tsit5())
     _tspan = length(tspan) == 1 ? [zero(tspan[1]), tspan[1]] : [tspan[1], tspan[2]]
     odeprob = ODEProblem(f, u0, (_tspan[1], _tspan[2]), p0)
     container = typeof(u0)
@@ -40,12 +40,12 @@ function addshootingproblem!(prob::ProblemStructure, name::String, f, u0, p0, ts
         throw(ArgumentError("Length of parameter vector does not match number of parameter names"))
     end
     # Create the necessary continuation variables and add the function
-    uidx = addvar!(prob, "$(name).u", length(u0), u0=u0)
-    pidx = addvar!(prob, "$(name).p", length(p0), u0=p0)
-    tidx = addvar!(prob, "$(name).tspan", 2, u0=_tspan)
-    fidx = addfunc!(prob, name, alg, (uidx, pidx, tidx), length(u0), kind=:embedded)
-    addpars!(prob, _pnames, pidx, active=false)
-    addpars!(prob, ("$(name).t0", "$(name).t1"), tidx, active=false)
+    uidx = add_var!(prob, "$(name).u", length(u0), u0=u0)
+    pidx = add_var!(prob, "$(name).p", length(p0), u0=p0)
+    tidx = add_var!(prob, "$(name).tspan", 2, u0=_tspan)
+    fidx = add_func!(prob, name, alg, (uidx, pidx, tidx), length(u0), kind=:embedded)
+    add_pars!(prob, _pnames, pidx, active=false)
+    add_pars!(prob, ("$(name).t0", "$(name).t1"), tidx, active=false)
     return fidx
 end
 

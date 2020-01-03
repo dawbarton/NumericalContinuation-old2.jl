@@ -9,7 +9,7 @@ module ProblemStructures
 # Continuation functions might maintain their own data structure, but anything
 # that might change from chart to chart should be stored in the chart data. (It
 # might be that the same data is shared across multiple charts - this requires a
-# custom copyfuncdata function to avoid making unnecessary copies.)
+# custom copy_funcdata function to avoid making unnecessary copies.)
 
 #--- Continuation variables
 
@@ -26,15 +26,15 @@ Vars() = Vars(String["all"], Int64[0], UnitRange{Int64}[1:0], Any[()], Any[()], 
 
 # Functions operating on individual variables
 
-getname(vars::Vars, vidx::Int64) = vars.names[vidx]
-getdim(vars::Vars, vidx::Int64) = vars.dims[vidx]
-getindices(vars::Vars, vidx::Int64) = vars.indices[vidx]
-getu0(vars::Vars, vidx::Int64) = vars.u0[vidx]
-gett0(vars::Vars, vidx::Int64) = vars.t0[vidx]
+get_name(vars::Vars, vidx::Int64) = vars.names[vidx]
+get_dim(vars::Vars, vidx::Int64) = vars.dims[vidx]
+get_indices(vars::Vars, vidx::Int64) = vars.indices[vidx]
+get_u0(vars::Vars, vidx::Int64) = vars.u0[vidx]
+get_t0(vars::Vars, vidx::Int64) = vars.t0[vidx]
 Base.getindex(vars::Vars, name::String) = vars.lookup[name]
-hasvar(vars::Vars, name::String) = haskey(vars.lookup, name)
+has_var(vars::Vars, name::String) = haskey(vars.lookup, name)
 
-function addvar!(vars::Vars, name::String, dim::Integer; u0=nothing, t0=nothing)
+function add_var!(vars::Vars, name::String, dim::Integer; u0=nothing, t0=nothing)
     if haskey(vars.lookup, name)
         throw(ArgumentError("Continuation variable already exists: $name"))
     end
@@ -45,11 +45,11 @@ function addvar!(vars::Vars, name::String, dim::Integer; u0=nothing, t0=nothing)
     push!(vars.t0, t0)
     vidx = length(vars.names)
     vars.lookup[name] = vidx
-    setdim!(vars, vidx, dim)
+    set_dim!(vars, vidx, dim)
     return vidx
 end
 
-function setdim!(vars::Vars, vidx::Int64, dim::Integer)
+function set_dim!(vars::Vars, vidx::Int64, dim::Integer)
     if vidx == 1
         last = 0
     else
@@ -65,15 +65,15 @@ function setdim!(vars::Vars, vidx::Int64, dim::Integer)
     return vars
 end
 
-setu0!(vars::Vars, vidx::Int64, u0) = vars.u0[vidx] = u0
-sett0!(vars::Vars, vidx::Int64, t0) = vars.t0[vidx] = t0
+set_u0!(vars::Vars, vidx::Int64, u0) = vars.u0[vidx] = u0
+set_t0!(vars::Vars, vidx::Int64, t0) = vars.t0[vidx] = t0
 
 # Functions operating on the collection of variables
 
-getdim(vars::Vars) = vars.indices[end].stop
+get_dim(vars::Vars) = vars.indices[end].stop
 Base.length(vars::Vars) = length(vars.names)
 
-function getu0(T::Type{<: Number}, vars::Vars)
+function get_u0(T::Type{<: Number}, vars::Vars)
     u0 = Vector{Vector{T}}()
     for vidx in 2:length(vars.u0)
         if vars.dims[vidx] != 0
@@ -89,9 +89,9 @@ function getu0(T::Type{<: Number}, vars::Vars)
     reduce(vcat, u0)
 end
 
-getu0(vars::Vars) = getu0(Float64, vars)
+get_u0(vars::Vars) = get_u0(Float64, vars)
 
-function gett0(T::Type{<: Number}, vars::Vars)
+function get_t0(T::Type{<: Number}, vars::Vars)
     t0 = Vector{Vector{T}}()
     for vidx in 2:length(vars.t0)
         if vars.dims[vidx] != 0
@@ -107,12 +107,12 @@ function gett0(T::Type{<: Number}, vars::Vars)
     reduce(vcat, t0)
 end
 
-gett0(vars::Vars) = gett0(Float64, vars)
+get_t0(vars::Vars) = get_t0(Float64, vars)
 
 #--- Traits for continuation functions
 
-passdata(func) = false
-passproblem(func) = false
+pass_data(func) = false
+pass_problem(func) = false
 
 #--- Continuation functions (embedded or non-embedded)
 
@@ -132,16 +132,16 @@ Functions(vars::Vars) = Functions(String[], Int64[], UnitRange{Int64}[], Any[], 
 
 # Functions operating on individual continuation functions
 
-getname(funcs::Functions, fidx::Int64) = funcs.names[fidx]
-getdim(funcs::Functions, fidx::Int64) = funcs.dims[fidx]
-getindices(funcs::Functions, fidx::Int64) = funcs.indices[fidx]
-getfunc(funcs::Functions, fidx::Int64) = funcs.funcs[fidx]
-getdeps(funcs::Functions, fidx::Int64) = funcs.deps[fidx]
-getfuncdata(funcs::Functions, fidx::Int64) = funcs.funcdata[fidx]
+get_name(funcs::Functions, fidx::Int64) = funcs.names[fidx]
+get_dim(funcs::Functions, fidx::Int64) = funcs.dims[fidx]
+get_indices(funcs::Functions, fidx::Int64) = funcs.indices[fidx]
+get_func(funcs::Functions, fidx::Int64) = funcs.funcs[fidx]
+get_deps(funcs::Functions, fidx::Int64) = funcs.deps[fidx]
+get_funcdata(funcs::Functions, fidx::Int64) = funcs.funcdata[fidx]
 Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
-hasfunc(funcs::Functions, name::String) = haskey(funcs.lookup, name)
+has_func(funcs::Functions, name::String) = haskey(funcs.lookup, name)
 
-function addfunc!(funcs::Functions, name::String, func, deps::NTuple{N, Int64} where N, dim::Integer; data=nothing, kind=:none)
+function add_func!(funcs::Functions, name::String, func, deps::NTuple{N, Int64} where N, dim::Integer; data=nothing, kind=:none)
     if haskey(funcs.lookup, name)
         throw(ArgumentError("Continuation function already exists: $name"))
     end
@@ -154,11 +154,11 @@ function addfunc!(funcs::Functions, name::String, func, deps::NTuple{N, Int64} w
     push!(funcs.kind, kind)
     fidx = length(funcs.names)
     funcs.lookup[name] = fidx
-    setdim!(funcs, fidx, dim)
+    set_dim!(funcs, fidx, dim)
     return fidx
 end
 
-function setdim!(funcs::Functions, fidx::Int64, dim::Int64)
+function set_dim!(funcs::Functions, fidx::Int64, dim::Int64)
     if fidx == 1
         last = 0
     else
@@ -172,7 +172,7 @@ function setdim!(funcs::Functions, fidx::Int64, dim::Int64)
     return funcs
 end
 
-setfuncdata!(funcs::Functions, fidx::Int64, data) = funcs.funcdata[fidx] = data
+set_funcdata!(funcs::Functions, fidx::Int64, data) = funcs.funcdata[fidx] = data
 
 # Functions operating on the collection of functions
 
@@ -182,10 +182,10 @@ function evaluate!(res, funcs::Functions, u, prob=nothing, data=nothing)
     uv = [view(u, idx) for idx in funcs.vars.indices]
     for i in eachindex(funcs.funcs)
         args = Any[view(res, funcs.indices[i])]
-        if passproblem(typeof(funcs.funcs[i]))
+        if pass_problem(typeof(funcs.funcs[i]))
             push!(args, prob)
         end
-        if passdata(typeof(funcs.funcs[i]))
+        if pass_data(typeof(funcs.funcs[i]))
             push!(args, data[i])
         end
         for dep in funcs.deps[i]
@@ -196,13 +196,13 @@ function evaluate!(res, funcs::Functions, u, prob=nothing, data=nothing)
     return res
 end
 
-getinitialfuncdata(funcs::Functions) = funcs.funcdata
+get_initial_funcdata(funcs::Functions) = funcs.funcdata
 
-function copyfuncdata(funcs::Functions, data::Tuple)
-    return ((copyfuncdata(funcs.funcs[i], data[i]) for i in eachindex(data))...,)
+function copy_funcdata(funcs::Functions, data::Tuple)
+    return ((copy_funcdata(funcs.funcs[i], data[i]) for i in eachindex(data))...,)
 end
 
-copyfuncdata(func, data) = deepcopy(data)
+copy_funcdata(func, data) = deepcopy(data)
 
 #--- Specialisations for speed of evaluation of continuation functions
 
@@ -230,10 +230,10 @@ function _evaluate_specialised(N, D, F)
     # Call each of the problems
     for i in eachindex(D)
         expr = :(funcs.funcs[$i](view(res, funcs.wrapped.indices[$i])))
-        if passproblem(F.parameters[i])
+        if pass_problem(F.parameters[i])
             push!(expr.args, :prob)
         end
-        if passdata(F.parameters[i])
+        if pass_data(F.parameters[i])
             push!(expr.args, :(data[$i]))
         end
         for j in eachindex(D[i])
@@ -250,8 +250,8 @@ end
     _evaluate_specialised(N, D, F)
 end
 
-getinitialdata(funcs::SpecialisedFunctions) = (funcs.wrapped.funcdata...,)
-copyfuncdata(funcs::SpecialisedFunctions, data::Tuple) = copyfuncdata(funcs.wrapped, data)  # TODO: write as a generated function?
+get_initial_funcdata(funcs::SpecialisedFunctions) = (funcs.wrapped.funcdata...,)
+copy_funcdata(funcs::SpecialisedFunctions, data::Tuple) = copy_funcdata(funcs.wrapped, data)  # TODO: write as a generated function?
 
 #--- Problem structure (embedded and non-embedded functions)
 
@@ -266,13 +266,13 @@ function ProblemStructure()
     return ProblemStructure(vars, Functions(vars), Functions(vars))
 end
 
-getvars(prob::ProblemStructure) = prob.vars  # allow direct access to vars to avoid lots of delegation
-addvar!(prob::ProblemStructure, args...; kwargs...) = addvar!(prob.vars, args...; kwargs...)
+get_vars(prob::ProblemStructure) = prob.vars  # allow direct access to vars to avoid lots of delegation
+add_var!(prob::ProblemStructure, args...; kwargs...) = add_var!(prob.vars, args...; kwargs...)
 
 function Base.getindex(prob::ProblemStructure, name::String)
-    if hasfunc(prob.embedded, name)
+    if has_func(prob.embedded, name)
         return prob.embedded[name]
-    elseif hasfunc(prob.nonembedded, name)
+    elseif has_func(prob.nonembedded, name)
         return -prob.nonembedded[name]
     else
         throw(KeyError("Function \"$name\" not found"))
@@ -280,18 +280,18 @@ function Base.getindex(prob::ProblemStructure, name::String)
 end
 
 # Allow direct access to the different functions to avoid lots of (potentially ambiguous) delegation
-getembeddedfuncs(prob::ProblemStructure) = prob.embedded
-getnonembeddedfuncs(prob::ProblemStructure) = prob.nonembedded
+get_embeddedfuncs(prob::ProblemStructure) = prob.embedded
+get_nonembeddedfuncs(prob::ProblemStructure) = prob.nonembedded
 
-getfunc(prob::ProblemStructure, fidx::Int64) = fidx > 0 ? getfunc(prob.embedded, fidx) : getfunc(prob.nonembedded, fidx)
-hasfunc(prob::ProblemStructure, name::String) = hasfunc(prob.embedded, name) || hasfunc(prob.nonembedded, name)
+get_func(prob::ProblemStructure, fidx::Int64) = fidx > 0 ? get_func(prob.embedded, fidx) : get_func(prob.nonembedded, fidx)
+has_func(prob::ProblemStructure, name::String) = has_func(prob.embedded, name) || has_func(prob.nonembedded, name)
 
-function addfunc!(prob::ProblemStructure, name::String, args...; kind::Symbol=:embedded, kwargs...)
-    if !hasfunc(prob, name)
+function add_func!(prob::ProblemStructure, name::String, args...; kind::Symbol=:embedded, kwargs...)
+    if !has_func(prob, name)
         if kind === :embedded
-            fidx = addfunc!(prob.embedded, name, args...; kind=kind, kwargs...)
+            fidx = add_func!(prob.embedded, name, args...; kind=kind, kwargs...)
         else
-            fidx = -addfunc!(prob.nonembedded, name, args...; kind=kind, kwargs...)
+            fidx = -add_func!(prob.nonembedded, name, args...; kind=kind, kwargs...)
         end
         return fidx
     else
@@ -331,19 +331,19 @@ struct MonitorFunction{F}
     vidx::Int64
 end
 
-passproblem(::Type{MonitorFunction{F}} where F) = true
-passdata(::Type{MonitorFunction{F}} where F) = true
+pass_problem(::Type{MonitorFunction{F}} where F) = true
+pass_data(::Type{MonitorFunction{F}} where F) = true
 
 function (mfunc::MonitorFunction)(res, prob, data, um, u...)
     mu = isempty(um) ? data[1][] : um[1]
-    if passproblem(typeof(mfunc.func))
-        if passdata(typeof(mfunc.func))
+    if pass_problem(typeof(mfunc.func))
+        if pass_data(typeof(mfunc.func))
             res[1] = mfunc.func(prob, data, u...) - mu
         else
             res[1] = mfunc.func(prob, u...) - mu
         end
     else
-        if passdata(typeof(mfunc.func))
+        if pass_data(typeof(mfunc.func))
             res[1] = mfunc.func(data, u...) - mu
         else
             res[1] = mfunc.func(u...) - mu
@@ -352,30 +352,30 @@ function (mfunc::MonitorFunction)(res, prob, data, um, u...)
     return res
 end
 
-setactive!(prob::ProblemStructure, mfunc::MonitorFunction, active::Bool) = setdim!(getvars(prob), mfunc.vidx, active ? 1 : 0)
-setactive!(prob::ProblemStructure, fidx::Int64, active::Bool) = setactive!(prob, getfunc(prob, fidx), active)
+set_active!(prob::ProblemStructure, mfunc::MonitorFunction, active::Bool) = set_dim!(get_vars(prob), mfunc.vidx, active ? 1 : 0)
+set_active!(prob::ProblemStructure, fidx::Int64, active::Bool) = set_active!(prob, get_func(prob, fidx), active)
 
-copyfuncdata(mfunc::MonitorFunction, data::Tuple) = (Ref(data[1][]), copyfuncdata(mfunc.func, data[2]))
+copy_funcdata(mfunc::MonitorFunction, data::Tuple) = (Ref(data[1][]), copy_funcdata(mfunc.func, data[2]))
 
-function addmonitorfunc!(prob::ProblemStructure, name::String, func, deps::NTuple{N, Int64} where N; data=nothing, active=true, val=nothing)
-    vars = getvars(prob)
-    _val = val === nothing ? func((getu0(vars, dep) for dep in deps)...) : val
-    vidx = addvar!(vars, name, active ? 1 : 0, u0=_val)
+function add_monitorfunc!(prob::ProblemStructure, name::String, func, deps::NTuple{N, Int64} where N; data=nothing, active=true, val=nothing)
+    vars = get_vars(prob)
+    _val = val === nothing ? func((get_u0(vars, dep) for dep in deps)...) : val
+    vidx = add_var!(vars, name, active ? 1 : 0, u0=_val)
     mfunc = MonitorFunction(func, vidx)
-    addfunc!(prob, name, mfunc, (vidx, deps...), 1, data=(Ref(_val), data), kind=:embedded)
+    add_func!(prob, name, mfunc, (vidx, deps...), 1, data=(Ref(_val), data), kind=:embedded)
 end
 
-function addpar!(prob::ProblemStructure, name::String, vidx::Int64; active=true, offset=1)
-    if getdim(getvars(prob), vidx) < offset
+function add_par!(prob::ProblemStructure, name::String, vidx::Int64; active=true, offset=1)
+    if get_dim(get_vars(prob), vidx) < offset
         throw(ArgumentError("Requested offset ($offset) is larger than the variable"))
     end
     let offset=offset
-        addmonitorfunc!(prob, name, u->(@inbounds u[offset]), (vidx,), active=active) 
+        add_monitorfunc!(prob, name, u->(@inbounds u[offset]), (vidx,), active=active) 
     end
 end
 
-function addpars!(prob::ProblemStructure, names, vidx::Int64; active=true)
-    return [addpar!(prob, name, vidx, active=active, offset=offset) for (name, offset) in zip(names, Base.OneTo(length(names)))]
+function add_pars!(prob::ProblemStructure, names, vidx::Int64; active=true)
+    return [add_par!(prob, name, vidx, active=active, offset=offset) for (name, offset) in zip(names, Base.OneTo(length(names)))]
 end
 
 end # module
