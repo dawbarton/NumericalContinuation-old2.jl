@@ -1,5 +1,3 @@
-module ProblemStructures
-
 #--- Continuation variables
 
 struct Vars
@@ -326,4 +324,3 @@ end
 add_var!(funcs::Functions, args...; kwargs...) = add_var!(funcs.vars, args...; kwargs...)
 add_data!(funcs::Functions, args...; kwargs...) = add_data!(funcs.data, args...; kwargs...)
 
-end # module

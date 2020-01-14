@@ -1,6 +1,6 @@
 module NumericalContinuation
 
-include("ProblemStructures.jl")
+include("problem_structures.jl")
 
 # include("AlgebraicProblems.jl")
 # include("ShootingProblems.jl")
