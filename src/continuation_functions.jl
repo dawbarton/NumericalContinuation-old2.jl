@@ -184,19 +184,37 @@ Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
 has_func(funcs::Functions, name::String) = haskey(funcs.lookup, name)
 has_group(funcs::Functions, name::String) = haskey(funcs.groups, name)
 
-function add_func!(funcs::Functions, name::String, dim::Integer, func, vardeps::NTuple{<:Any, Int64}, datadeps::NTuple{<:Any, Int64}, probdep::Bool, memberof::NTuple{<:Any, Symbol})
+_convert_deps(deps::NTuple{<:Any, Int64}, lookup) = deps
+function _convert_deps(deps, lookup)
+    if typeof(deps) === String
+        return (lookup[deps],)
+    else
+        _deps = Int64[]
+        for dep in deps
+            if typeof(dep) === String
+                push!(_deps, lookup[dep])
+            else
+                push!(_deps, dep)
+            end
+        end
+        return (_deps...,)
+    end
+end
+
+function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, memberof=:embedded; data=(), prob::Bool=false)
     if has_func(funcs, name)
         throw(ArgumentError("Continuation function already exists: $name"))
     end
     push!(funcs.names, name)
     push!(funcs.dims, dim)
     push!(funcs.funcs, func)
-    push!(funcs.vardeps, vardeps)
-    push!(funcs.datadeps, datadeps)
-    push!(funcs.probdep, probdep)
-    push!(funcs.memberof, memberof)
+    push!(funcs.vardeps, _convert_deps(vars, funcs.vars))
+    push!(funcs.datadeps, _convert_deps(data, funcs.data))
+    push!(funcs.probdep, prob)
+    _memberof = typeof(memberof) === Symbol ? (memberof,) : memberof
+    push!(funcs.memberof, _memberof)
     fidx = funcs.lookup[name] = length(funcs.names)
-    for grp in memberof
+    for grp in _memberof
         if haskey(funcs.groups, grp)
             push!(funcs.groups[grp], fidx)
         else
@@ -205,36 +223,6 @@ function add_func!(funcs::Functions, name::String, dim::Integer, func, vardeps::
         funcs.group_func[grp] = nothing
     end
     return fidx
-end
-
-function add_func!(funcs::Functions, name::String, dim::Integer, func, vardeps::Any, datadeps::Any, probdep::Bool, memberof::Any)
-    # Convenience function to put all dependencies into the required format
-    _vardeps = Int64[]
-    if typeof(vardeps) === String
-        push!(_vardeps, funcs.vars[vardeps])
-    else
-        for vdep in vardeps
-            if typeof(vdep) === String
-                push!(_vardeps, funcs.vars[vdep])
-            else
-                push!(_vardeps, vdep)
-            end
-        end
-    end
-    _datadeps = Int64[]
-    if typeof(datadeps) === String
-        push!(_datadeps, funcs.data[datadeps])
-    else
-        for ddep in datadeps
-            if typeof(ddep) === String
-                push!(_datadeps, funcs.data[ddep])
-            else
-                push!(_datadeps, ddep)
-            end
-        end
-    end
-    _memberof = typeof(memberof) === Symbol ? [memberof] : memberof
-    add_func!(funcs, name, dim, func, (_vardeps...,), (_datadeps...,), probdep, (_memberof...,))
 end
 
 # Functions operating on the collection of functions
@@ -259,7 +247,7 @@ function Base.getindex(funcs::Functions, name::Symbol)
 end
 
 function generate_func_expr(funcs::Functions, name::Symbol)
-    func = :(function (output, funcs, prob, data, u) vars = funcs.vars end)
+    func = :(function (output, funcs, u; prob, data) vars = funcs.vars end)
     func_body = func.args[2]
     # Get all dependent continuation variables
     fidx = funcs.groups[name]
@@ -274,14 +262,14 @@ function generate_func_expr(funcs::Functions, name::Symbol)
     push!(func_body.args, :(next = 1))
     for fi in fidx
         func_call = :($(funcs.funcs[fi])(view(output, next:next+funcs.dims[$fi])))
-        if funcs.probdep[fi]
-            push!(func_call.args, :prob)
-        end
-        for di in funcs.datadeps[fi]
-            push!(func_call.args, :(data[di]))
-        end
         for vi in funcs.vardeps[fi]
             push!(func_call.args, vdict[vi])
+        end
+        if funcs.probdep[fi]
+            push!(func_call.args, Expr(:kw, :prob, :prob))
+        end
+        for di in funcs.datadeps[fi]
+            push!(func_call.args, Expr(:kw, Symbol(nameof(funcs.data, di)), :(data[$di])))
         end
         push!(func_body.args, func_call)
         push!(func_body.args, :(next = next + funcs.dims[$fi]))
@@ -293,7 +281,7 @@ end
 function generate_func!(funcs::Functions, name::Symbol)
     let funcs = funcs
         grpfunc = eval(generate_func_expr(funcs, name))
-        return funcs.group_func[name] = (output, prob, data, u) -> grpfunc(output, funcs, prob, data, u)
+        return funcs.group_func[name] = (output, u; prob, data) -> grpfunc(output, funcs, u, prob=prob, data=data)
     end
 end
 
