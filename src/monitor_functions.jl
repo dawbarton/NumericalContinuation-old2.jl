@@ -5,7 +5,7 @@ struct MonitorFunctionWrapper{F}
     func::F
 end
 
-function (mfunc::MonitorFunctionWrapper)(output, um, u...; mfunc_data, kwargs...)
+function (mfunc::MonitorFunctionWrapper)(output, um, u...; var"%mfunc", kwargs...)
     mu = isempty(um) ? mfunc_data[mfunc.idx] : um[1]
     output[1] = mfunc.func(u...; kwargs...) - mu
     return nothing
@@ -28,18 +28,21 @@ end
 Base.getindex(mfunc::MonitorFunctions, name::String) = mfunc.lookup[name]
 has_mfunc(mfunc::MonitorFunctions, name::String) = haskey(mfunc.lookup, name)
 
-_prepend_deps(dep, deps::String) = (dep, deps)
-_prepend_deps(dep, deps) = (dep, deps...)
-
 function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), prob=false, active=:true, initial_value=nothing)
     if has_mfunc(mfunc, name)
         throw(ArgumentError("Monitor function already exists: $name"))
     end
-    push!(mfunc.names, name)
-    midx = length(name)
-    mfunc.lookup[name] = midx
+    if has_var(mfunc.funcs, name)
+        throw(ArgumentError("Continuation variable already exists: $name"))
+    end
+    midx = length(mfunc.names)+1
+    fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), vars, :mfunc, data=data, prob=prob)
+    # Do things in this order to ensure that user errors (e.g., with vars) bail out before corrupting internal structures
     muidx = add_var!(mfunc.funcs, name, active ? 1 : 0, u0=initialvalue)
-    fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), _prepend_deps(muidx, vars), :mfunc, data=_prepend_deps(mfunc.didx, data), prob=prob)
+    set_vardeps!(mfunc.funcs, fidx, (muidx, get_vardeps(mfunc.funcs, fidx)...))
+    set_datadeps!(mfunc.funcs, fidx, (Symbol("%mfunc")=>mfunc.didx, get_datadeps(mfunc.funcs, fidx)...))
+    push!(mfunc.names, name)
+    mfunc.lookup[name] = midx
     push!(mfunc.fidx, fidx)
     push!(mfunc.muidx, muidx)
     return midx
