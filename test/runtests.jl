@@ -1,6 +1,6 @@
 using NumericalContinuation
 using Test
 
-@testset "NumericalContinuation.jl" begin
-    # Write your own tests here.
-end
+const NC = NumericalContinuation
+
+include("test_continuation_functions.jl")

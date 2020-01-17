@@ -70,7 +70,7 @@ function get_u0(T::Type{<: Number}, vars::Vars)
             elseif length(vars.u0[vidx]) == vars.dims[vidx]
                 append!(u0, convert(Vector{T}, vars.u0[vidx]))
             else
-                throw(ErrorException("Initial data for variable $(vars.names[vidx]) does not have the correct number of dimensions ($(vars.dims[vidx]))"))
+                throw(ArgumentError("Initial data for variable $(vars.names[vidx]) does not have the correct number of dimensions ($(vars.dims[vidx]))"))
             end
         end
     end
@@ -88,7 +88,7 @@ function get_t0(T::Type{<: Number}, vars::Vars)
             elseif length(vars.t0[vidx]) == vars.dims[vidx]
                 append!(t0, convert(Vector{T}, vars.t0[vidx]))
             else
-                throw(ErrorException("Initial data for variable $(vars.names[vidx]) does not have the correct number of dimensions ($(vars.dims[vidx]))"))
+                throw(ArgumentError("Initial data for variable $(vars.names[vidx]) does not have the correct number of dimensions ($(vars.dims[vidx]))"))
             end
         end
     end
@@ -216,8 +216,10 @@ function _convert_vars(deps, vars)
     for dep in deps
         if typeof(dep) === String
             push!(_deps, vars[dep])
-        else
+        elseif typeof(dep) === Int64
             push!(_deps, dep)
+        else
+            throw(ArgumentError("Variable dependencies are expected to be variable names (Strings) or variable indices (Int64)"))
         end
     end
     return _deps
@@ -236,7 +238,7 @@ function _convert_data(deps, data)
         elseif typeof(dep) === Pair{Symbol, String}
             push!(_deps, data[dep])
         else
-            throw(ErrorException("Data dependencies are expected to be pair of the form `:data=>data_idx`"))
+            throw(ArgumentError("Data dependencies are expected to be pair of the form `:data=>data_idx`"))
         end
     end
     return _deps
@@ -282,7 +284,7 @@ Base.length(funcs::Functions) = length(funcs.names)
 
 function Base.getindex(funcs::Functions, name::Symbol)
     if !haskey(funcs.groups, name)
-        throw(ErrorException("Function group does not exist: $name"))
+        throw(ArgumentError("Function group does not exist: $name"))
     else
         group_func = funcs.group_func[name]
         if group_func === nothing
