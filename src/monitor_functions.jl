@@ -38,9 +38,9 @@ function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), 
     midx = length(mfunc.names)+1
     fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), vars, :mfunc, data=data, prob=prob)
     # Do things in this order to ensure that user errors (e.g., with vars) bail out before corrupting internal structures
-    muidx = add_var!(mfunc.funcs, name, active ? 1 : 0, u0=initialvalue)
-    set_vardeps!(mfunc.funcs, fidx, (muidx, get_vardeps(mfunc.funcs, fidx)...))
-    set_datadeps!(mfunc.funcs, fidx, (Symbol("%mfunc")=>mfunc.didx, get_datadeps(mfunc.funcs, fidx)...))
+    muidx = add_var!(mfunc.funcs, name, active ? 1 : 0, u0=initial_value)
+    set_vardeps!(mfunc.funcs, fidx, pushfirst!(get_vardeps(mfunc.funcs, fidx), muidx))
+    set_datadeps!(mfunc.funcs, fidx, pushfirst!(get_datadeps(mfunc.funcs, fidx), Symbol("%mfunc")=>mfunc.didx))
     push!(mfunc.names, name)
     mfunc.lookup[name] = midx
     push!(mfunc.fidx, fidx)

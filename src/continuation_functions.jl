@@ -159,15 +159,15 @@ struct Functions
     lookup::Dict{String, Int64}
     dims::Vector{Int64}
     funcs::Vector{Any}
-    vardeps::Vector{NTuple{<:Any, Int64}}
-    datadeps::Vector{NTuple{<:Any, Pair{Symbol, Int64}}}
+    vardeps::Vector{Vector{Int64}}
+    datadeps::Vector{Vector{Pair{Symbol, Int64}}}
     probdep::Vector{Bool}
-    memberof::Vector{NTuple{<:Any, Symbol}}
+    memberof::Vector{Vector{Symbol}}
     groups::Dict{Symbol, Vector{Int64}}
     group_func::Dict{Symbol, Any}
 end
 
-Functions(vars::Vars, data::Data) = Functions(vars, data, String[], Dict{String, Int64}(), Int64[], Any[], NTuple{<:Any, Int64}[], NTuple{<:Any, Tuple{Symbol, Int64}}[], Bool[], NTuple{<:Any, Symbol}[], Dict{Symbol, Vector{Int64}}(), Dict{Symbol, Any}())
+Functions(vars::Vars, data::Data) = Functions(vars, data, String[], Dict{String, Int64}(), Int64[], Any[], Vector{Int64}[], Vector{Pair{Symbol, Int64}}[], Bool[], Vector{Symbol}[], Dict{Symbol, Vector{Int64}}(), Dict{Symbol, Any}())
 Functions() = Functions(Vars(), Data())
 
 # Functions operating on individual continuation functions
@@ -190,13 +190,13 @@ function _invalidate_groups(funcs::Functions, fidx::Int64)
     end
 end
 
-function set_vardeps!(funcs::Functions, fidx::Int64, vars::NTuple{<:Any, Int64})
+function set_vardeps!(funcs::Functions, fidx::Int64, vars::Vector{Int64})
     funcs.vardeps[fidx] = vars
     _invalidate_groups(funcs, fidx)
     return funcs
 end
 
-function set_datadeps!(funcs::Functions, fidx::Int64, data::NTuple{<:Any, Pair{Symbol, Int64}})
+function set_datadeps!(funcs::Functions, fidx::Int64, data::Vector{Pair{Symbol, Int64}})
     funcs.datadeps[fidx] = data
     _invalidate_groups(funcs, fidx)
     return funcs
@@ -208,10 +208,10 @@ function set_probdep!(funcs::Functions, fidx::Int64, prob::Bool)
     return funcs
 end
 
-_var_deps(deps::NTuple{<:Any, Int64}, vars) = deps
-_var_deps(deps::Int64, vars) = (vars,)
-_var_deps(deps::String, vars) = (vars[deps],)
-function _var_deps(deps, vars)
+_convert_vars(deps::Vector{Int64}, vars) = deps
+_convert_vars(deps::Int64, vars) = [deps]
+_convert_vars(deps::String, vars) = [vars[deps]]
+function _convert_vars(deps, vars)
     _deps = Int64[]
     for dep in deps
         if typeof(dep) === String
@@ -220,15 +220,15 @@ function _var_deps(deps, vars)
             push!(_deps, dep)
         end
     end
-    return (_deps...,)
+    return _deps
 end
 
-_data_deps(deps::NTuple{<:Any, Pair{Symbol, Int64}}, data) = deps
-_data_deps(deps::Pair{Symbol, Int64}, data) = (deps,)
-_data_deps(deps::Pair{Symbol, String}, data) = (first(deps)=>data[last(deps)],)
-_data_deps(deps::Int64, data) = (:data=>deps,)
-_data_deps(deps::String, data) = (:data=>data[deps],)
-function _data_deps(deps, data)
+_convert_data(deps::Vector{Pair{Symbol, Int64}}, data) = deps
+_convert_data(deps::Pair{Symbol, Int64}, data) = [deps]
+_convert_data(deps::Pair{Symbol, String}, data) = [first(deps)=>data[last(deps)]]
+_convert_data(deps::Int64, data) = [:data=>deps]
+_convert_data(deps::String, data) = [:data=>data[deps]]
+function _convert_data(deps, data)
     _deps = Pair{Symbol, Int64}[]
     for dep in deps
         if typeof(dep) === Pair{Symbol, Int64}
@@ -239,15 +239,19 @@ function _data_deps(deps, data)
             throw(ErrorException("Data dependencies are expected to be pair of the form `:data=>data_idx`"))
         end
     end
-    return (_deps...,)
+    return _deps
 end
 
-function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, memberof=:embedded; data=(), prob::Bool=false)
+_convert_memberof(memberof::Vector{Symbol}) = memberof
+_convert_memberof(memberof::Symbol) = [memberof]
+
+function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, memberof=:embedded; data=Pair{Symbol, Int64}[], prob::Bool=false)
     if has_func(funcs, name)
         throw(ArgumentError("Continuation function already exists: $name"))
     end
-    _vars = _var_deps(vars, funcs.vars)
-    _data = _data_deps(data, funcs.data)
+    _vars = _convert_vars(vars, funcs.vars)
+    _data = _convert_data(data, funcs.data)
+    _memberof = _convert_memberof(memberof)
     # All code that could error due to user inputs should be before push! to avoid data structure corruption
     push!(funcs.names, name)
     push!(funcs.dims, dim)
@@ -255,7 +259,6 @@ function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, mem
     push!(funcs.vardeps, _vars)
     push!(funcs.datadeps, _data)
     push!(funcs.probdep, prob)
-    _memberof = typeof(memberof) === Symbol ? (memberof,) : memberof
     push!(funcs.memberof, _memberof)
     fidx = funcs.lookup[name] = length(funcs.names)
     for grp in _memberof
@@ -295,7 +298,7 @@ function generate_func_expr(funcs::Functions, name::Symbol)
     func_body = func.args[2]
     # Get all dependent continuation variables
     fidx = funcs.groups[name]
-    vidx = unique([vdep for vdeps in funcs.vardeps[fidx] for vdep in vdeps])
+    vidx = unique(reduce(vcat, funcs.vardeps[fidx]))
     # Generate symbols for each continuation variable
     vdict = Dict([vi=>gensym() for vi in vidx])
     # Generate views for each variable (indices can change during continuation so can't interpolate them here)
