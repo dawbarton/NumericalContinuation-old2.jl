@@ -37,6 +37,9 @@
     NC.set_t0!(v, v1, [2])
     @test NC.get_u0(v) == [1, 1, 2]
     @test NC.get_t0(v) == [2, 3, 4]
+    @test_throws ArgumentError NC.set_dim!(v, 1, 5)
+    NC.set_dim!(v, v1, 2)
+    @test_throws ErrorException NC.get_u0(v)  
     io = IOBuffer()
     show(io, MIME("text/plain"), v)
     @test !isempty(take!(io))

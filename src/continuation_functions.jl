@@ -39,6 +39,8 @@ end
 
 function set_dim!(vars::Vars, vidx::Int64, dim::Integer)
     if vidx == 1
+        throw(ArgumentError("Cannot set the dimension of the all variable"))
+    elseif vidx == 2
         last = 0
     else
         last = vars.indices[vidx-1].stop
@@ -70,7 +72,7 @@ function get_u0(T::Type{<: Number}, vars::Vars)
             elseif length(vars.u0[vidx]) == vars.dims[vidx]
                 append!(u0, convert(Vector{T}, vars.u0[vidx]))
             else
-                throw(ArgumentError("Initial data for variable $(vars.names[vidx]) does not have the correct number of dimensions ($(vars.dims[vidx]))"))
+                throw(ErrorException("Initial data for variable $(vars.names[vidx]) does not have the correct number of dimensions ($(vars.dims[vidx]))"))
             end
         end
     end
