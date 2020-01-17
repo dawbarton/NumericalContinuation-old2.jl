@@ -73,4 +73,7 @@ end
     NC.add_func!(func, "f2", 2, f2, v1, [:embedded, :monitor], data=:dta=>d1)
     @test_throws ArgumentError NC.add_func!(func, "_f2", 2, f2, ["v1", v2, :v2])
     @test_throws ArgumentError NC.add_func!(func, "_f2", 2, f2, [v1, v2], data=[:dta=>d1, :data=>"d1", "data"=>"d1"])
+    NC.add_func!(func, "f1a", 1, f1, "v1", data="d1")
+    NC.add_func!(func, "f1b", 1, f1, "v1", data=d1)
+    NC.add_func!(func, "f1c", 1, f1, "v1", data=:data=>"d1")
 end
