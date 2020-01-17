@@ -39,6 +39,7 @@
     @test NC.get_t0(v) == [2, 3, 4]
     @test_throws ArgumentError NC.set_dim!(v, 1, 5)
     NC.set_dim!(v, v1, 2)
+    @test NC.get_indices(v, v1) == 1:2
     @test_throws ErrorException NC.get_u0(v)  
     io = IOBuffer()
     show(io, MIME("text/plain"), v)
@@ -76,7 +77,12 @@ end
     NC.add_func!(func, "f2", 2, f2, v1, [:embedded, :monitor], data=:dta=>d1)
     @test_throws ArgumentError NC.add_func!(func, "_f2", 2, f2, ["v1", v2, :v2])
     @test_throws ArgumentError NC.add_func!(func, "_f2", 2, f2, [v1, v2], data=[:dta=>d1, :data=>"d1", "data"=>"d1"])
-    NC.add_func!(func, "f1a", 1, f1, "v1", data="d1")
-    NC.add_func!(func, "f1b", 1, f1, "v1", data=d1)
+    NC.add_func!(func, "f1a", 1, f1, ("v1", v2), data=(:data=>"d1",))
+    NC.add_func!(func, "f1b", 1, f1, "v1", data=(:data=>d1,))
     NC.add_func!(func, "f1c", 1, f1, "v1", data=:data=>"d1")
+    @test length(func) == 5
+    @test NC.get_vars(func) isa NC.Vars
+    @test NC.get_data(func) isa NC.Data
+    @test collect(NC.get_groups(func)) == [:embedded, :monitor]
+    @test_throws ArgumentError func[:random]
 end

@@ -18,7 +18,7 @@ get_dim(vars::Vars, vidx::Int64) = vars.dims[vidx]
 get_indices(vars::Vars, vidx::Int64) = vars.indices[vidx]
 get_u0(vars::Vars, vidx::Int64) = vars.u0[vidx]
 get_t0(vars::Vars, vidx::Int64) = vars.t0[vidx]
-Base.nameof(vars::Vars, vidx::Int64) = vars.names[vidx]
+Base.nameof(vars::Vars, vidx::Int64) = get_name(vars, vidx)
 Base.getindex(vars::Vars, name::String) = vars.lookup[name]
 has_var(vars::Vars, name::String) = haskey(vars.lookup, name)
 
@@ -130,10 +130,11 @@ function add_data!(data::Data, name::String, newdata)
     return data.lookup[name] = length(data.names)
 end
 
+get_name(data::Data, didx::Int64) = data.names[didx]
 get_data(data::Data, didx::Int64) = data.data[didx]
 set_data!(data::Data, didx::Int64, newdata) = data.data[didx] = newdata
 
-Base.nameof(data::Data, didx::Int64) = data.names[didx]
+Base.nameof(data::Data, didx::Int64) = get_name(data, didx)
 Base.getindex(data::Data, name::String) = data.lookup[name]
 
 # Functions operating on the collection of continuation data
@@ -181,7 +182,7 @@ get_vardeps(funcs::Functions, fidx::Int64) = funcs.vardeps[fidx]
 get_datadeps(funcs::Functions, fidx::Int64) = funcs.datadeps[fidx]
 get_probdep(funcs::Functions, fidx::Int64) = funcs.probdep[fidx]
 get_groups(funcs::Functions, fidx::Int64) = funcs.memberof[fidx]
-Base.nameof(funcs::Functions, fidx::Int64) = funcs.names[fidx]
+Base.nameof(funcs::Functions, fidx::Int64) = get_name(funcs, fidx)
 Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
 has_func(funcs::Functions, name::String) = haskey(funcs.lookup, name)
 has_group(funcs::Functions, name::String) = haskey(funcs.groups, name)
@@ -238,7 +239,7 @@ function _convert_data(deps, data)
         if typeof(dep) === Pair{Symbol, Int64}
             push!(_deps, dep)
         elseif typeof(dep) === Pair{Symbol, String}
-            push!(_deps, data[dep])
+            push!(_deps, first(dep)=>data[last(dep)])
         else
             throw(ArgumentError("Data dependencies are expected to be pair of the form `:data=>data_idx`"))
         end
