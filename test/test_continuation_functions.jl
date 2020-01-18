@@ -80,7 +80,7 @@ end
     NC.add_func!(func, "f1a", 1, f1, ("v1", v2), data=(:data=>"d1",))
     NC.add_func!(func, "f1b", 1, f1, "v1", data=(:data=>d1,))
     NC.add_func!(func, "f1c", 1, f1, "v2", data=:data=>"d1")
-    NC.add_func!(func, "f1d", 1, f1, "v1", data="d1")
+    NC.add_func!(func, "f1d", 1, f1, v1, data="d1")
     NC.add_func!(func, "f1e", 1, f1, "v1", data=d1)
     NC.add_func!(func, "f3", 1, f3, ("v1", "v2"), prob=true)
     @test length(func) == 8
@@ -132,6 +132,11 @@ end
     NC.add_func!(func, "func", 1, g3, "v1", prob=false)
     @test_throws UndefKeywordError func[:embedded](out2, u, data=nothing, prob=prob)
     NC.set_probdep!(func, func["func"], true)
-    func[:embedded](out2, u, data=nothing, prob=prob)
+    fun = func[:embedded]
+    fun(out2, u, data=nothing, prob=prob)
     @test out2 == [u[1]+prob]
+    @test func[:embedded] == fun
+    io = IOBuffer()
+    show(io, MIME("text/plain"), func)
+    @test !isempty(take!(io))    
 end
