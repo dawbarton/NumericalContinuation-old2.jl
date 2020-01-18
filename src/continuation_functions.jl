@@ -121,7 +121,7 @@ Data() = Data(String[], Dict{String, Int64}(), Any[])
 
 # Functions operating on individual continuation data
 
-function add_data!(data::Data, name::String, newdata)
+function add_data!(data::Data, name::String, newdata=nothing)
     if haskey(data.lookup, name)
         throw(ArgumentError("Continuation data already exists: $name"))
     end
@@ -185,7 +185,6 @@ get_groups(funcs::Functions, fidx::Int64) = funcs.memberof[fidx]
 Base.nameof(funcs::Functions, fidx::Int64) = get_name(funcs, fidx)
 Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
 has_func(funcs::Functions, name::String) = haskey(funcs.lookup, name)
-has_group(funcs::Functions, name::String) = haskey(funcs.groups, name)
 
 function _invalidate_groups(funcs::Functions, fidx::Int64)
     for grp in funcs.memberof[fidx]
@@ -279,9 +278,11 @@ end
 
 # Functions operating on the collection of functions
 
+get_dim(funcs::Functions, group::Symbol) = sum(funcs.dims[funcs.groups[group]])
 get_groups(funcs::Functions) = keys(funcs.groups)
 get_vars(funcs::Functions) = funcs.vars
 get_data(funcs::Functions) = funcs.data
+has_group(funcs::Functions, name::Symbol) = haskey(funcs.groups, name)
 
 Base.length(funcs::Functions) = length(funcs.names)
 

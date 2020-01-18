@@ -66,23 +66,72 @@ end
 
 @testset "Continuation functions" begin
     f1 = (out, x...; data=0) -> out[1] = sum(reduce(vcat, x)) + data
-    f2 = (out, x...; dta) -> (out[1] = sum(reduce(vcat, x)) + dta; out[2] = x[2])
+    f2 = (out, x...; dta) -> (out[1] = sum(reduce(vcat, x)) + dta; out[2] = x[2][1])
     f3 = (out, x...; prob) -> out[1] = sum(reduce(vcat, x)) + prob
     func = NC.Functions()
     v1 = NC.add_var!(func, "v1", 1)
     v2 = NC.add_var!(func, "v2", 1)
     d1 = NC.add_data!(func, "d1", 1.25)
     NC.add_func!(func, "f1", 1, f1, "v1")
-    @test_throws ArgumentError NC.add_func!(func, "f1", 1, f1, "v1")
-    NC.add_func!(func, "f2", 2, f2, v1, [:embedded, :monitor], data=:dta=>d1)
+    @test_throws ArgumentError NC.add_func!(func, "f1", 1, f1, v1)
+    NC.add_func!(func, "f2", 2, f2, [v1, v2], [:embedded, :monitor], data=:dta=>d1)
     @test_throws ArgumentError NC.add_func!(func, "_f2", 2, f2, ["v1", v2, :v2])
     @test_throws ArgumentError NC.add_func!(func, "_f2", 2, f2, [v1, v2], data=[:dta=>d1, :data=>"d1", "data"=>"d1"])
     NC.add_func!(func, "f1a", 1, f1, ("v1", v2), data=(:data=>"d1",))
     NC.add_func!(func, "f1b", 1, f1, "v1", data=(:data=>d1,))
-    NC.add_func!(func, "f1c", 1, f1, "v1", data=:data=>"d1")
-    @test length(func) == 5
+    NC.add_func!(func, "f1c", 1, f1, "v2", data=:data=>"d1")
+    NC.add_func!(func, "f1d", 1, f1, "v1", data="d1")
+    NC.add_func!(func, "f1e", 1, f1, "v1", data=d1)
+    NC.add_func!(func, "f3", 1, f3, ("v1", "v2"), prob=true)
+    @test length(func) == 8
     @test NC.get_vars(func) isa NC.Vars
     @test NC.get_data(func) isa NC.Data
     @test collect(NC.get_groups(func)) == [:embedded, :monitor]
     @test_throws ArgumentError func[:random]
+    @test nameof(func, func["f1"]) == "f1"
+    @test NC.get_dim(func, func["f2"]) == 2
+    @test NC.get_func(func, func["f1"]) === f1
+    @test NC.get_vardeps(func, func["f1a"]) == [v1, v2]
+    @test NC.get_datadeps(func, func["f2"]) == [:dta=>d1]
+    @test NC.get_probdep(func, func["f1"]) == false
+    @test NC.get_groups(func, func["f2"]) == [:embedded, :monitor]
+    @test NC.has_func(func, "f1")
+    @test NC.has_group(func, :monitor)
+    @test NC.has_var(func, "v1")
+    @test NC.has_data(func, "d1")
+    @test NC.get_dim(func, :embedded) == 9
+    @test NC.get_dim(func, :monitor) == 2
+    u = [2.5, 4.0]
+    d = (8.5,)
+    prob = 3.25
+    out = zeros(Float64, NC.get_dim(func, :embedded))
+    func[:embedded](out, u, data=d, prob=prob)
+    @test out == [u[1], sum(u[1:2])+d[1], u[2], sum(u[1:2])+d[1], u[1]+d[1], u[2]+d[1], u[1]+d[1], u[1]+d[1], sum(u[1:2])+prob]
+    g1 = (out, u1, u2) -> out[1] = u1[1]+u2[1]
+    g2 = (out, u1; dta) -> out[1] = u1[1]+dta
+    g3 = (out, u1; prob) -> out[1] = u1[1]+prob
+    out2 = zeros(Float64, 1)
+    func = NC.Functions()
+    v1 = NC.add_var!(func, "v1", 1)
+    v2 = NC.add_var!(func, "v2", 1)
+    NC.add_func!(func, "func", 1, g1, "v1")
+    @test_throws MethodError func[:embedded](out2, u, data=nothing, prob=nothing)
+    NC.set_vardeps!(func, func["func"], [v1, v2])
+    func[:embedded](out2, u, data=nothing, prob=nothing)
+    @test out2 == [u[1]+u[2]]
+    func = NC.Functions()
+    v1 = NC.add_var!(func, "v1", 1)
+    d1 = NC.add_data!(func, "d1")
+    NC.add_func!(func, "func", 1, g2, "v1")
+    @test_throws UndefKeywordError func[:embedded](out2, u, data=d, prob=nothing)
+    NC.set_datadeps!(func, func["func"], [:dta=>d1])
+    func[:embedded](out2, u, data=d, prob=nothing)
+    @test out2 == [u[1]+d[1]]
+    func = NC.Functions()
+    v1 = NC.add_var!(func, "v1", 1)
+    NC.add_func!(func, "func", 1, g3, "v1", prob=false)
+    @test_throws UndefKeywordError func[:embedded](out2, u, data=nothing, prob=prob)
+    NC.set_probdep!(func, func["func"], true)
+    func[:embedded](out2, u, data=nothing, prob=prob)
+    @test out2 == [u[1]+prob]
 end
