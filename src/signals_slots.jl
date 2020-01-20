@@ -42,7 +42,7 @@ function add_signal!(signals::Signals, name::Symbol, signature::Expr)
     return signals.signals[name] = Signal(name, signature)
 end
 
-has_signal(signals::Signals, name::Symbol) = haskey(signals.signals)
+has_signal(signals::Signals, name::Symbol) = haskey(signals.signals, name)
 
 function connect_signal!(signals::Signals, name::Symbol, slot)
     if !haskey(signals.signals, name)

@@ -19,4 +19,9 @@
     @test _f1[] == 2
     NC.emit_signal(signals, :test2, 1.5, y=1.0)
     @test _f1[] == 3
+    signals[:test1](1.5, y=1.5)
+    @test _f1[] == 4
+    @test _f2[] == 2
+    @test NC.has_signal(signals, :test1)
+    @test !NC.has_signal(signals, :random)
 end
