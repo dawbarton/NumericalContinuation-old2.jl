@@ -3,6 +3,7 @@ module NumericalContinuation
 include("signals_slots.jl")
 include("continuation_functions.jl")
 include("monitor_functions.jl")
+include("problem_structure.jl")
 
 
 
