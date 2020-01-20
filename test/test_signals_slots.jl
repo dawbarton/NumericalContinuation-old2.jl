@@ -7,6 +7,7 @@
     NC.add_signal!(signals, :test1, :((x; y)))
     NC.add_signal!(signals, :test2, :((x; y=1)))
     @test_throws ArgumentError NC.add_signal!(signals, :test1, :((x; y)))
+    @test length(signals) == 2
     NC.connect_signal!(signals, :test1, f1)
     @test_throws ArgumentError NC.connect_signal!(signals, :test1, f1)
     @test_throws ArgumentError NC.connect_signal!(signals, :random, f1)

@@ -10,6 +10,7 @@
     @test_throws ArgumentError NC.add_mfunc!(mfuncs, "v1", u -> u[1]-1, "v1")
     @test NC.get_indices(vars, vars["mfunc1"]) == 5:5
     @test NC.get_dim(vars) == 5
+    @test length(mfuncs) == 1
     u = [1.5,2,3,4,5]
     
 end

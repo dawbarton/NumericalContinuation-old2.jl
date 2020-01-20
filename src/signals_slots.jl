@@ -35,6 +35,8 @@ end
 
 Signals() = Signals(Dict{Symbol, Signal}())
 
+Base.length(signals::Signals) = length(signals.signals)
+
 function add_signal!(signals::Signals, name::Symbol, signature::Expr)
     if name in keys(signals.signals)
         throw(ArgumentError("Signal already exists: $name"))

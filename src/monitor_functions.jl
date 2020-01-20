@@ -25,6 +25,7 @@ function MonitorFunctions(funcs::Functions)
     return MonitorFunctions(funcs, String[], Dict{String, Int64}(), didx, Int64[], Int64[])
 end
 
+Base.length(mfunc::MonitorFunctions) = length(mfunc.names)
 Base.getindex(mfunc::MonitorFunctions, name::String) = mfunc.lookup[name]
 has_mfunc(mfunc::MonitorFunctions, name::String) = haskey(mfunc.lookup, name)
 
