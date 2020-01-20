@@ -2,7 +2,7 @@
 
 #--- Individual signals
 
-mutable struct Signal
+struct Signal
     name::Symbol
     signature::Expr
     slots::Vector{Any}
