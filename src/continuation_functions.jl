@@ -100,7 +100,7 @@ end
 get_t0(vars::Vars) = get_t0(Float64, vars)
 
 function Base.show(io::IO, mime::MIME"text/plain", vars::Vars)
-    println(io, "Variables:")
+    println(io, "Vars:")
     for i in eachindex(vars.names)
         name = vars.names[i]
         dims = vars.dims[i] == 1 ? "1 dim" : "$(vars.dims[i]) dims"
@@ -352,9 +352,6 @@ function generate_func!(funcs::Functions, name::Symbol)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", funcs::Functions)
-    println(io, "Functions structure with $(length(funcs.vars)) variables, $(length(funcs.data)) data, $(length(funcs.names)) functions, and $(length(keys(funcs.groups))) functions groups")
-    show(io, mime, funcs.vars)
-    show(io, mime, funcs.data)
     println(io, "Functions:")
     for i in eachindex(funcs.names)
         name = funcs.names[i]
@@ -365,7 +362,7 @@ function Base.show(io::IO, mime::MIME"text/plain", funcs::Functions)
         !isempty(vdeps) && println(io, "    • variables: $vdeps")
         !isempty(ddeps) && println(io, "    • data: $ddeps")
     end
-    println(io, "Function groups:")
+    !isempty(funcs.groups) && println(io, "With function groups:")
     for name in keys(funcs.groups)
         fcount = length(funcs.groups[name]) == 1 ? "1 function" : "$(length(funcs.groups[name])) functions"
         flist = join([funcs.names[dep] for dep in funcs.groups[name]], ", ")

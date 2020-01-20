@@ -68,3 +68,17 @@ function mfunc_update_data!(mfunc::MonitorFunctions, u, data)
 end
 
 get_func(mfunc::MonitorFunctions) = mfunc.funcs
+
+function Base.show(io::IO, mime::MIME"text/plain", mfuncs::MonitorFunctions)
+    vars = get_vars(mfuncs.funcs)
+    data = get_data(mfuncs.funcs)
+    println(io, "MonitorFunctions:")
+    for i in eachindex(mfuncs.names)
+        name = mfuncs.names[i]
+        vdeps = join([nameof(vars, dep) for dep in get_vardeps(mfuncs.funcs, mfuncs.fidx[i])], ", ")
+        ddeps = join([nameof(data, last(dep)) for dep in get_datadeps(mfuncs.funcs, mfuncs.fidx[i])], ", ")
+        println(io, "  → $name that depends on")
+        !isempty(vdeps) && println(io, "    • variables: $vdeps")
+        !isempty(ddeps) && println(io, "    • data: $ddeps")
+    end
+end
