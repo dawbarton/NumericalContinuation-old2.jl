@@ -36,7 +36,7 @@ function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), 
         throw(ArgumentError("Continuation variable already exists: $name"))
     end
     midx = length(mfunc.names)+1
-    fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), vars, :mfunc, data=data, prob=prob)
+    fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), vars, [:embedded, :mfunc], data=data, prob=prob)
     # Do things in this order to ensure that user errors (e.g., with vars) bail out before corrupting internal structures
     muidx = add_var!(mfunc.funcs, name, active ? 1 : 0, u0=initial_value)
     set_vardeps!(mfunc.funcs, fidx, pushfirst!(get_vardeps(mfunc.funcs, fidx), muidx))
@@ -51,7 +51,11 @@ end
 set_active!(mfunc::MonitorFunctions, midx::Int64, active) = set_dim!(get_vars(mfunc.funcs), mfunc.muidx[midx], active ? 1 : 0)
 set_active!(mfunc::MonitorFunctions, name::String, active) = set_active!(mfunc, mfunc[name], active)
 
-function update_mfunc_data!(mfunc::MonitorFunctions, u, data)
+function mfunc_initialize!(mfunc::MonitorFunctions)
+
+end
+
+function mfunc_update_data!(mfunc::MonitorFunctions, u, data)
     vars = get_vars(mfunc.funcs)
     mfunc_data = data[mfunc.didx]
     for i in eachindex(mfunc.muidx)
@@ -61,3 +65,5 @@ function update_mfunc_data!(mfunc::MonitorFunctions, u, data)
         end
     end
 end
+
+get_func(mfunc::MonitorFunctions) = mfunc.funcs
