@@ -283,6 +283,7 @@ get_groups(funcs::Functions) = keys(funcs.groups)
 get_vars(funcs::Functions) = funcs.vars
 get_data(funcs::Functions) = funcs.data
 has_group(funcs::Functions, name::Symbol) = haskey(funcs.groups, name)
+get_funcs(funcs::Functions, name::Symbol) = funcs.groups[name]
 
 Base.length(funcs::Functions) = length(funcs.names)
 

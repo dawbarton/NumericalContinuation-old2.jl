@@ -107,6 +107,9 @@ end
     out = zeros(Float64, NC.get_dim(func, :embedded))
     func[:embedded](out, u, data=d, prob=prob)
     @test out == [u[1], sum(u[1:2])+d[1], u[2], sum(u[1:2])+d[1], u[1]+d[1], u[2]+d[1], u[1]+d[1], u[1]+d[1], sum(u[1:2])+prob]
+    out .= 0
+    NC.eval_func!(out, func, NC.get_funcs(func, :embedded), u, data=d, prob=prob)
+    @test out == [u[1], sum(u[1:2])+d[1], u[2], sum(u[1:2])+d[1], u[1]+d[1], u[2]+d[1], u[1]+d[1], u[1]+d[1], sum(u[1:2])+prob]
     g1 = (out, u1, u2) -> out[1] = u1[1]+u2[1]
     g2 = (out, u1; dta) -> out[1] = u1[1]+dta
     g3 = (out, u1; prob) -> out[1] = u1[1]+prob
