@@ -127,6 +127,9 @@ end
     NC.set_datadeps!(func, func["func"], [:dta=>d1])
     func[:embedded](out2, u, data=d, prob=nothing)
     @test out2 == [u[1]+d[1]]
+    io = IOBuffer()
+    show(io, MIME("text/plain"), func)
+    @test !isempty(take!(io))    
     func = NC.Functions()
     v1 = NC.add_var!(func, "v1", 1)
     NC.add_func!(func, "func", 1, g3, "v1", prob=false)
@@ -136,7 +139,4 @@ end
     fun(out2, u, data=nothing, prob=prob)
     @test out2 == [u[1]+prob]
     @test func[:embedded] == fun
-    io = IOBuffer()
-    show(io, MIME("text/plain"), func)
-    @test !isempty(take!(io))    
 end

@@ -347,7 +347,7 @@ function Base.show(io::IO, mime::MIME"text/plain", funcs::Functions)
         name = funcs.names[i]
         dims = funcs.dims[i] == 1 ? "1 dim" : "$(funcs.dims[i]) dims"
         vdeps = join([nameof(funcs.vars, dep) for dep in funcs.vardeps[i]], ", ")
-        ddeps = join([nameof(funcs.data, dep) for dep in funcs.datadeps[i]], ", ")
+        ddeps = join([nameof(funcs.data, last(dep)) for dep in funcs.datadeps[i]], ", ")
         println(io, "  → $name ($dims) that depends on")
         !isempty(vdeps) && println(io, "    • variables: $vdeps")
         !isempty(ddeps) && println(io, "    • data: $ddeps")
