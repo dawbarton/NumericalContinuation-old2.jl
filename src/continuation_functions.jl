@@ -299,11 +299,23 @@ function Base.getindex(funcs::Functions, name::Symbol)
     end
 end
 
-function generate_func_expr(funcs::Functions, name::Symbol)
+function eval_func!(output, funcs::Functions, fidx::Vector{Int64}, u; prob, data)
+    next = 1
+    for fi in fidx  
+        kwargs = [name=>data[idx] for (name, idx) in funcs.datadeps[fi]]
+        funcs.funcs[fi](view(output, next:next+funcs.dims[fi]-1), 
+            (view(u, get_indices(funcs.vars, ui)) for ui in funcs.vardeps[fi])...;
+            (name=>data[idx] for (name, idx) in funcs.datadeps[fi])...,
+            (if funcs.probdep[fi]; (:prob=>prob,) else () end)...)
+        next = next + funcs.dims[fi]
+    end
+    return output
+end
+
+function generate_func(funcs::Functions, fidx::Vector{Int64})
     func = :(function (output, funcs, u; prob, data) vars = funcs.vars end)
     func_body = func.args[2]
     # Get all dependent continuation variables
-    fidx = funcs.groups[name]
     vidx = unique(reduce(vcat, funcs.vardeps[fidx]))
     # Generate symbols for each continuation variable
     vdict = Dict([vi=>gensym() for vi in vidx])
@@ -327,13 +339,13 @@ function generate_func_expr(funcs::Functions, name::Symbol)
         push!(func_body.args, func_call)
         push!(func_body.args, :(next = next + funcs.dims[$fi]))
     end
-    push!(func_body.args, :(return nothing))
+    push!(func_body.args, :(return output))
     return func
 end
 
 function generate_func!(funcs::Functions, name::Symbol)
     let funcs = funcs
-        grpfunc = eval(generate_func_expr(funcs, name))
+        grpfunc = eval(generate_func(funcs, funcs.groups[name]))
         return funcs.group_func[name] = (output, u; prob, data) -> grpfunc(output, funcs, u, prob=prob, data=data)
     end
 end
