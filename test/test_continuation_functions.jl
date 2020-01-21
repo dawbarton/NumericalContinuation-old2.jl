@@ -22,12 +22,12 @@
     @test NC.get_t0(v, v3) isa UnitRange
     @test NC.get_u0(Int64, v) == [0, 1, 2]
     @test NC.get_u0(Int64, v) isa Vector{Int64}
-    @test NC.get_u0(v) == [0.0, 1.0, 2.0]
-    @test NC.get_u0(v) isa Vector{Float64}
+    @test NC.get_u0(Float64, v) == [0.0, 1.0, 2.0]
+    @test NC.get_u0(Float64, v) isa Vector{Float64}
     @test NC.get_t0(Int64, v) == [0, 3, 4]
     @test NC.get_t0(Int64, v) isa Vector{Int64}
-    @test NC.get_t0(v) == [0.0, 3.0, 4.0]
-    @test NC.get_t0(v) isa Vector{Float64}
+    @test NC.get_t0(Float64, v) == [0.0, 3.0, 4.0]
+    @test NC.get_t0(Float64, v) isa Vector{Float64}
     @test NC.get_indices(v, v1) == 1:1
     @test length(NC.get_indices(v, v2)) == 0
     @test NC.get_indices(v, v3) == 2:3
@@ -35,12 +35,12 @@
     @test NC.has_var(v, "v1")
     NC.set_u0!(v, v1, [1])
     NC.set_t0!(v, v1, [2])
-    @test NC.get_u0(v) == [1, 1, 2]
-    @test NC.get_t0(v) == [2, 3, 4]
+    @test NC.get_u0(Float64, v) == [1, 1, 2]
+    @test NC.get_t0(Float64, v) == [2, 3, 4]
     @test_throws ArgumentError NC.set_dim!(v, 1, 5)
     NC.set_dim!(v, v1, 2)
     @test NC.get_indices(v, v1) == 1:2
-    @test_throws ErrorException NC.get_u0(v)  
+    @test_throws ErrorException NC.get_u0(Float64, v)  
     io = IOBuffer()
     show(io, MIME("text/plain"), v)
     @test !isempty(take!(io))

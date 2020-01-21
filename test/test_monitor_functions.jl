@@ -16,11 +16,11 @@
     @test NC.get_data(data, data["mfunc_data"]) == [-1, 0.5]
     @test NC.get_u0(vars, vars["mfunc1"]) == [-1]
     @test NC.get_u0(vars, vars["mfunc2"]) == [0.5]
-    @test NC.get_u0(vars) == [0, 0, 0, 0, -1]
+    @test NC.get_u0(Float64, vars) == [0, 0, 0, 0, -1]
     mfunc_data = NC.get_data(data)
     NC.mfunc_update_data!(mfunc_data, mfuncs, [0, 0, 0, 0, 2.5])
     NC.set_active!(mfuncs, mfuncs["mfunc2"], true)
-    @test NC.get_u0(vars) == [0, 0, 0, 0, -1, 0.5]
+    @test NC.get_u0(Float64, vars) == [0, 0, 0, 0, -1, 0.5]
     io = IOBuffer()
     show(io, MIME("text/plain"), mfuncs)
     @test !isempty(take!(io))

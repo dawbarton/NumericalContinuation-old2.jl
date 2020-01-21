@@ -79,8 +79,6 @@ function get_u0(T::Type{<: Number}, vars::Vars)
     return u0
 end
 
-get_u0(vars::Vars) = get_u0(Float64, vars)
-
 function get_t0(T::Type{<: Number}, vars::Vars)
     t0 = Vector{T}()
     for vidx in 2:length(vars.t0)
@@ -96,8 +94,6 @@ function get_t0(T::Type{<: Number}, vars::Vars)
     end
     return t0
 end
-
-get_t0(vars::Vars) = get_t0(Float64, vars)
 
 function Base.show(io::IO, mime::MIME"text/plain", vars::Vars)
     println(io, "Vars ($(length(vars)) variables):")
