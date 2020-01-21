@@ -6,7 +6,7 @@ struct MonitorFunctionWrapper{F}
 end
 
 function (mfunc::MonitorFunctionWrapper)(output, um, u...; var"%mfunc", kwargs...)
-    mu = isempty(um) ? mfunc_data[mfunc.idx] : um[1]
+    mu = isempty(um) ? (var"%mfunc")[mfunc.idx] : um[1]
     output[1] = mfunc.func(u...; kwargs...) - mu
     return nothing
 end
@@ -29,7 +29,7 @@ Base.length(mfunc::MonitorFunctions) = length(mfunc.names)
 Base.getindex(mfunc::MonitorFunctions, name::String) = mfunc.lookup[name]
 has_mfunc(mfunc::MonitorFunctions, name::String) = haskey(mfunc.lookup, name)
 
-function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), prob=false, active=:true, initial_value=nothing)
+function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), prob=false, active::Bool=true, initial_value=nothing)
     if has_mfunc(mfunc, name)
         throw(ArgumentError("Monitor function already exists: $name"))
     end
@@ -39,7 +39,7 @@ function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), 
     midx = length(mfunc.names)+1
     fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), vars, [:embedded, :mfunc], data=data, prob=prob)
     # Do things in this order to ensure that user errors (e.g., with vars) bail out before corrupting internal structures
-    muidx = add_var!(mfunc.funcs, name, active ? 1 : 0, u0=initial_value)
+    muidx = add_var!(mfunc.funcs, name, active ? 1 : 0, u0=(initial_value isa Number ? [initial_value] : initial_value))
     set_vardeps!(mfunc.funcs, fidx, pushfirst!(get_vardeps(mfunc.funcs, fidx), muidx))
     set_datadeps!(mfunc.funcs, fidx, pushfirst!(get_datadeps(mfunc.funcs, fidx), Symbol("%mfunc")=>mfunc.didx))
     push!(mfunc.names, name)
@@ -52,17 +52,32 @@ end
 set_active!(mfunc::MonitorFunctions, midx::Int64, active) = set_dim!(get_vars(mfunc.funcs), mfunc.muidx[midx], active ? 1 : 0)
 set_active!(mfunc::MonitorFunctions, name::String, active) = set_active!(mfunc, mfunc[name], active)
 
-function mfunc_initialize!(mfunc::MonitorFunctions)
-
+function mfunc_initialize!(T::Type{<:Number}, mfunc::MonitorFunctions; prob)
+    vars = get_vars(mfunc.funcs)
+    data = get_data(mfunc.funcs)
+    mfunc_data = zeros(T, length(mfunc))
+    set_data!(data, mfunc.didx, mfunc_data)
+    output = zeros(T, 1)
+    for i in eachindex(mfunc.muidx)
+        mu = get_u0(vars, mfunc.muidx[i])
+        if mu === nothing
+            eval_func!(output, mfunc.funcs, [mfunc.fidx[i]], get_u0(T, vars), data=get_data(data), prob=prob)
+            set_u0!(vars, mfunc.muidx[i], [output[1]])
+            mfunc_data[i] = output[1]
+        else
+            mfunc_data[i] = mu[1]
+        end
+    end
+    return mfunc
 end
 
-function mfunc_update_data!(mfunc::MonitorFunctions, u, data)
+function mfunc_update_data!(data, mfunc::MonitorFunctions, u)
     vars = get_vars(mfunc.funcs)
     mfunc_data = data[mfunc.didx]
     for i in eachindex(mfunc.muidx)
         muidx = mfunc.muidx[i]
         if get_dim(vars, muidx) == 1
-            mfunc_data[i] = u[get_indicies(vars, muidx)[1]]
+            mfunc_data[i] = u[get_indices(vars, muidx)[1]]
         end
     end
 end
@@ -75,9 +90,10 @@ function Base.show(io::IO, mime::MIME"text/plain", mfuncs::MonitorFunctions)
     println(io, "MonitorFunctions:")
     for i in eachindex(mfuncs.names)
         name = mfuncs.names[i]
+        active = get_dim(vars, mfuncs.muidx[i]) == 1 ? "active" : "inactive"
         vdeps = join([nameof(vars, dep) for dep in get_vardeps(mfuncs.funcs, mfuncs.fidx[i])], ", ")
         ddeps = join([nameof(data, last(dep)) for dep in get_datadeps(mfuncs.funcs, mfuncs.fidx[i])], ", ")
-        println(io, "  → $name that depends on")
+        println(io, "  → $name ($active) that depends on")
         !isempty(vdeps) && println(io, "    • variables: $vdeps")
         !isempty(ddeps) && println(io, "    • data: $ddeps")
     end
