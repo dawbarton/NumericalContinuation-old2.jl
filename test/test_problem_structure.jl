@@ -11,6 +11,8 @@
     NC.add_func!(prob, "MyFunc", 1, f, "MyVar", data="MyData")
     NC.add_mfunc!(prob, "MyMfunc", mf, "MyVar")
 
+    signals = NC.get_signals(prob)
+    @test length(signals) == 1
     vars = NC.get_vars(prob)
     @test length(vars) == 3 # includes "all"
     data = NC.get_data(prob)
