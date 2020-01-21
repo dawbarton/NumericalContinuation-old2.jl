@@ -25,4 +25,7 @@
     @test _f2[] == 2
     @test NC.has_signal(signals, :test1)
     @test !NC.has_signal(signals, :random)
+    io = IOBuffer()
+    show(io, MIME("text/plain"), signals)
+    @test !isempty(take!(io))
 end

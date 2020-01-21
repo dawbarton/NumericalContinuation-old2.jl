@@ -27,6 +27,8 @@ function connect_signal!(signal::Signal, slot)
     return signal
 end
 
+Base.length(signal::Signal) = length(signal.slots)
+
 #--- Collection of signals
 
 struct Signals
@@ -57,3 +59,12 @@ end
 Base.getindex(signals::Signals, name::Symbol) = signals.signals[name]
 
 emit_signal(signals::Signals, name::Symbol, args...; kwargs...) = emit_signal(signals.signals[name], args...; kwargs...)
+
+#--- Pretty printing
+
+function Base.show(io::IO, mime::MIME"text/plain", signals::Signals)
+    println(io, "Signals ($(length(signals)) signals):")
+    for (name, signal) in signals.signals
+        println(io, "  → $name ($(length(signal)) slot functions)")
+    end
+end

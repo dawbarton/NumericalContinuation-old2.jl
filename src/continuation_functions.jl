@@ -100,7 +100,7 @@ end
 get_t0(vars::Vars) = get_t0(Float64, vars)
 
 function Base.show(io::IO, mime::MIME"text/plain", vars::Vars)
-    println(io, "Vars:")
+    println(io, "Vars ($(length(vars)) variables):")
     for i in eachindex(vars.names)
         name = vars.names[i]
         dims = vars.dims[i] == 1 ? "1 dim" : "$(vars.dims[i]) dims"
@@ -145,7 +145,7 @@ has_data(data::Data, name::String) = haskey(data.lookup, name)
 Base.length(data::Data) = length(data.names)
 
 function Base.show(io::IO, mime::MIME"text/plain", data::Data)
-    println(io, "Data:")
+    println(io, "Data ($(length(data)) data):")
     for i in eachindex(data.names)
         name = data.names[i]
         println(io, "  → $name")
@@ -353,7 +353,7 @@ function generate_func!(funcs::Functions, name::Symbol)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", funcs::Functions)
-    println(io, "Functions:")
+    println(io, "Functions ($(length(funcs)) functions):")
     for i in eachindex(funcs.names)
         name = funcs.names[i]
         dims = funcs.dims[i] == 1 ? "1 dim" : "$(funcs.dims[i]) dims"
@@ -363,7 +363,7 @@ function Base.show(io::IO, mime::MIME"text/plain", funcs::Functions)
         !isempty(vdeps) && println(io, "    • variables: $vdeps")
         !isempty(ddeps) && println(io, "    • data: $ddeps")
     end
-    !isempty(funcs.groups) && println(io, "With function groups:")
+    !isempty(funcs.groups) && println(io, "With $(length(funcs.groups)) function groups:")
     for name in keys(funcs.groups)
         fcount = length(funcs.groups[name]) == 1 ? "1 function" : "$(length(funcs.groups[name])) functions"
         flist = join([funcs.names[dep] for dep in funcs.groups[name]], ", ")
