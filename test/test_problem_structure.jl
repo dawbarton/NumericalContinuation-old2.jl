@@ -34,6 +34,11 @@
     embedded(out, u0, data=d0, prob=prob)
     @test out == [sum(1:10) - d0[data["MyData"]], 0.0]
 
+    NC.add_pars!(prob, ["p$i" for i in 1:10], "MyVar")
+    @test NC.get_dim(funcs, :embedded) == 12
+    @test NC.get_dim(vars) == 11
+    @test_throws ArgumentError NC.add_par!(prob, "p1", "MyVar")
+
     io = IOBuffer()
     show(io, MIME("text/plain"), prob)
     @test !isempty(take!(io))
