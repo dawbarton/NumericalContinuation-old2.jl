@@ -49,6 +49,28 @@ function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), 
     return midx
 end
 
+function add_par!(mfunc::MonitorFunctions, name::String, var::Union{String, Int64}; index::Int64=1, active::Bool=false)
+    let index=index
+        add_mfunc!(mfunc, name, u -> getindex(u, index), var, active=active)
+    end
+end
+
+function add_pars!(mfunc::MonitorFunctions, names, var::Union{String, Int64}; active::Bool=false)
+    vars = get_vars(mfunc.funcs)
+    u_dim = get_dim(vars, var isa String ? vars[var] : var)
+    p_dim = length(names)
+    if u_dim != p_dim
+        throw(ArgumentError("Number of parameters ($p_dim) does not match the dimension of the variable ($u_dim)"))
+    end
+    idx = 1
+    p_idx = zeros(Int64, p_dim)
+    for name in names
+        p_idx[idx] = add_par!(mfunc, name, var, index=idx, active=active)
+        idx += 1
+    end
+    return p_idx
+end
+
 set_active!(mfunc::MonitorFunctions, midx::Int64, active) = set_dim!(get_vars(mfunc.funcs), mfunc.muidx[midx], active ? 1 : 0)
 set_active!(mfunc::MonitorFunctions, name::String, active) = set_active!(mfunc, mfunc[name], active)
 

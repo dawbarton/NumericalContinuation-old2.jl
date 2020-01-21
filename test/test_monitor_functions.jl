@@ -29,4 +29,17 @@
     out = zeros(2)
     NC.eval_func!(out, funcs, NC.get_funcs(funcs, :mfunc), zeros(5), data=mfunc_data, prob=nothing)
     @test out == [-3.5, 0.5]    
+    
+    vars = NC.Vars()
+    data = NC.Data()
+    funcs = NC.Functions(vars, data)
+    mfuncs = NC.MonitorFunctions(funcs)
+    NC.add_var!(funcs, "v1", 4, u0=1:4)
+    @test_throws ArgumentError NC.add_pars!(mfuncs, ["p1", "p2", "p3", "p4", "p5"], "v1")
+    NC.add_pars!(mfuncs, ["p1", "p2", "p3", "p4"], "v1")
+    @test length(funcs) == 4
+    NC.mfunc_initialize!(Float64, mfuncs, prob=nothing)
+    @test NC.get_data(data, data["mfunc_data"]) == 1:4
+    @test NC.get_dim(vars) == 4
+    @test NC.get_dim(funcs, :mfunc) == 4
 end
