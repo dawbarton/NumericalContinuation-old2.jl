@@ -1,6 +1,8 @@
 #--- Main problem structure for continuation
 
-struct ProblemStructure
+abstract type AbstractProblemStructure end
+
+struct ProblemStructure <: AbstractProblemStructure
     signals::Signals
     vars::Vars
     data::Data
@@ -40,9 +42,9 @@ get_mfuncs(prob::ProblemStructure) = prob.mfuncs
 
 add_signal!(prob::ProblemStructure, args...; kwargs...) = add_signal!(prob.signals, args...; kwargs...)
 connect_signal!(prob::ProblemStructure, args...; kwargs...) = connect_signal!(prob.signals, args...; kwargs...)
-emit_signal!(prob::ProblemStructure, args...; kwargs...) = emit_signal!(prob.signals, args...; kwargs...)
+emit_signal(prob::ProblemStructure, args...; kwargs...) = emit_signal(prob.signals, args...; kwargs...)
 add_var!(prob::ProblemStructure, args...; kwargs...) = add_var!(prob.vars, args...; kwargs...)
 add_data!(prob::ProblemStructure, args...; kwargs...) = add_data!(prob.data, args...; kwargs...)
 add_func!(prob::ProblemStructure, args...; kwargs...) = add_func!(prob.funcs, args...; kwargs...)
+get_func(prob::ProblemStructure, args...; kwargs...) = get_func(prob.funcs, args...; kwargs...)
 add_mfunc!(prob::ProblemStructure, args...; kwargs...) = add_mfunc!(prob.mfuncs, args...; kwargs...)
-

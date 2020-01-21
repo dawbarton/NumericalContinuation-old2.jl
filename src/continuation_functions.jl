@@ -285,9 +285,10 @@ get_data(funcs::Functions) = funcs.data
 has_group(funcs::Functions, name::Symbol) = haskey(funcs.groups, name)
 get_funcs(funcs::Functions, name::Symbol) = funcs.groups[name]
 
+Base.getindex(funcs::Functions, name::Symbol) = get_func(funcs, name)
 Base.length(funcs::Functions) = length(funcs.names)
 
-function Base.getindex(funcs::Functions, name::Symbol)
+function get_func(funcs::Functions, name::Symbol)
     if !haskey(funcs.groups, name)
         throw(ArgumentError("Function group does not exist: $name"))
     else
