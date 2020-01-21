@@ -44,7 +44,7 @@ not. It assumes that the function output is of the same dimension as `u`.
 
 # Parameters
 
-* `prob::ProblemStructure` : the underlying continuation problem.
+* `prob` : the underlying continuation problem.
 * `name::String` : the name of the algebraic zero problem.
 * `f` : the function to use for the zero problem. It takes either two arguments
   (`u` and `p`) or three arguments for an in-place version (`res`, `u`, and `p`).
