@@ -16,7 +16,7 @@ See [`add_algebraicproblem!`](@ref) for details.
 module AlgebraicProblems
 
 using DocStringExtensions
-using ..ProblemStructures: ProblemStructure, add_var!, add_func!, add_pars!
+using ..NumericalContinuation: add_var!, add_func!, add_pars!
 
 export add_algebraicproblem!
 
@@ -60,7 +60,7 @@ prob = ProblemStructure()
 add_algebraicproblem!(prob, "cubic", (u, p) -> u^3 - p, 1.5, 1)  # u0 = 1.5, p0 = 1
 ```
 """
-function add_algebraicproblem!(prob::ProblemStructure, name::String, f, u0, p0; pnames=nothing)
+function add_algebraicproblem!(prob, name::String, f, u0, p0; pnames=nothing)
     # Determine whether f is in-place or not
     if any(method.nargs == 4 for method in methods(f))
         f! = f
@@ -68,7 +68,7 @@ function add_algebraicproblem!(prob::ProblemStructure, name::String, f, u0, p0; 
         f! = (res, u, p) -> res .= f(u, p)
     end
     # Check for parameter names
-    _pnames = pnames !== nothing ? pnames : ["$(name).p$i" for i in 1:length(p0)]
+    _pnames = pnames !== nothing ? [string(pname) for pname in pnames] : ["$(name).p$i" for i in 1:length(p0)]
     if length(_pnames) != length(p0)
         throw(ArgumentError("Length of parameter vector does not match number of parameter names"))
     end
@@ -79,9 +79,9 @@ function add_algebraicproblem!(prob::ProblemStructure, name::String, f, u0, p0; 
     # Create the necessary continuation variables and add the function
     uidx = add_var!(prob, "$(name).u", length(u0), u0=(U === Number ? [u0] : u0))
     pidx = add_var!(prob, "$(name).p", length(p0), u0=(P === Number ? [p0] : p0))
-    fidx = add_func!(prob, name, alg, (uidx, pidx), length(u0), kind=:embedded)
+    fidx = add_func!(prob, name, length(u0), alg, [uidx, pidx])
     add_pars!(prob, _pnames, pidx, active=false)
-    return fidx
+    return prob
 end
 
 end # module
