@@ -65,4 +65,8 @@
     @test (2=>2.5) in ev2
     @test (2=>3.5) in ev2
     @test (3=>2.0) in ev2
+
+    io = IOBuffer()
+    show(io, MIME("text/plain"), events)
+    @test !isempty(take!(io))
 end

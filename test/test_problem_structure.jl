@@ -10,6 +10,7 @@
     NC.add_data!(prob, "MyData", 2.0)
     NC.add_func!(prob, "MyFunc", 1, f, "MyVar", data="MyData")
     NC.add_mfunc!(prob, "MyMfunc", mf, "MyVar")
+    NC.add_event!(prob, "MyEvent", "MyMfunc", 400)
 
     options = NC.get_options(prob)
     @test options === prob[]
@@ -18,11 +19,13 @@
     vars = NC.get_vars(prob)
     @test length(vars) == 3 # includes "all"
     data = NC.get_data(prob)
-    @test length(data) == 2 # includes "mfunc_data"
+    @test length(data) == 3 # includes "mfunc_data" and "event_data"
     funcs = NC.get_funcs(prob)
     @test length(funcs) == 2
     mfuncs = NC.get_mfuncs(prob)
     @test length(mfuncs) == 1
+    events = NC.get_events(prob)
+    @test length(events) == 1
 
     prob["random.option.2"] = "Hello"
     @test prob["random.option.2"] == "Hello"
@@ -31,6 +34,12 @@
     NC.initialize!(prob)
     u0 = NC.get_u0(T, vars)
     d0 = NC.get_data(data)
+    NC.update_data!(prob, u0, data=d0)
+    u1 = u0 .+ 1
+    u1[end] = sum(u1[1:10].^2)  # manually fix up the monitor function rather than using a nonlinear solve
+    d1 = deepcopy(d0)
+    NC.update_data!(prob, u1, data=d1)
+    @test length(NC.check_events(prob, d0, d1)) == 1
 
     NC.emit_signal(prob, :random_signal1, u0, data=d0, prob=prob)
     @test _slot[] == 1

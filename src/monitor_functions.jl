@@ -27,6 +27,7 @@ end
 
 Base.length(mfunc::MonitorFunctions) = length(mfunc.names)
 Base.getindex(mfunc::MonitorFunctions, name::String) = mfunc.lookup[name]
+Base.nameof(mfunc::MonitorFunctions, idx::Integer) = mfunc.names[idx]
 has_mfunc(mfunc::MonitorFunctions, name::String) = haskey(mfunc.lookup, name)
 has_mfunc(mfunc::MonitorFunctions, idx::Integer) = (idx > 0) && (idx <= length(mfunc))
 
@@ -113,7 +114,7 @@ function Base.show(io::IO, mime::MIME"text/plain", mfuncs::MonitorFunctions)
     data = get_data(mfuncs.funcs)
     println(io, "MonitorFunctions:")
     for i in eachindex(mfuncs.names)
-        name = mfuncs.names[i]
+        name = nameof(mfuncs, i)
         active = get_dim(vars, mfuncs.muidx[i]) == 1 ? "active" : "inactive"
         vdeps = join([nameof(vars, dep) for dep in get_vardeps(mfuncs.funcs, mfuncs.fidx[i])], ", ")
         ddeps = join([nameof(data, last(dep)) for dep in get_datadeps(mfuncs.funcs, mfuncs.fidx[i])], ", ")

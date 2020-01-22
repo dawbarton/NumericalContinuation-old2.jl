@@ -28,6 +28,7 @@ get_func_type(events::Events, eidx::Integer) = events.func_type[eidx]
 get_signal_name(events::Events, eidx::Integer) = events.signal_names[eidx]
 Base.length(events::Events) = length(events.names)
 Base.getindex(events::Events, name::String) = events.lookup[name]
+Base.nameof(events::Events, eidx::Integer) = events.names[eidx]
 
 has_event(events::Events, name::String) = haskey(events.lookup, name)
 
@@ -83,7 +84,9 @@ function initialize!(events::Events, prob)
 end
 
 function update_data!(events::Events, u; data, prob)
-    events.funcs[:events](data[events.didx], u, data=data, prob=prob)
+    if !isempty(data[events.didx])
+        events.funcs[:events](data[events.didx], u, data=data, prob=prob)
+    end
     return
 end
 
@@ -110,4 +113,21 @@ function check_events(events::Events, data1, data2)
         check_event!(events, evlist, eidx, events.values[eidx], v1, v2)
     end
     return evlist
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", events::Events)
+    println(io, "Events ($(length(events)) events):")
+    for eidx in eachindex(events.names)
+        name = nameof(events, eidx)
+        kind = events.kind[eidx]
+        func_type = events.func_type[eidx]
+        if func_type === :embedded
+            depname = "mfunc="*nameof(events.mfuncs, events.idx[eidx])
+        else
+            depname = "func="*nameof(events.funcs, events.idx[eidx])
+        end
+        value = events.values[eidx]
+        println(io, "  → $name ($kind, $func_type, $depname)")
+        println(io, "    • Trigger at: $value")
+    end
 end
