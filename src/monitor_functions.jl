@@ -122,3 +122,5 @@ function Base.show(io::IO, mime::MIME"text/plain", mfuncs::MonitorFunctions)
         !isempty(ddeps) && println(io, "    • data: $ddeps")
     end
 end
+
+get_mfunc_value(mfunc::MonitorFunctions, midx::Integer, data) = data[mfunc.didx][midx]
