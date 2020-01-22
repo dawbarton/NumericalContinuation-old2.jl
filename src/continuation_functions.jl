@@ -185,6 +185,19 @@ Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
 has_func(funcs::Functions, name::String) = haskey(funcs.lookup, name)
 has_func(funcs::Functions, idx::Integer) = (idx > 0) && (idx <= length(funcs))
 
+function add_func_to_group(funcs::Functions, fidx::Int64, grp::Symbol)
+    if !(grp in funcs.memberof[fidx])
+        push!(funcs.memberof[fidx], grp)
+        if haskey(funcs.groups, grp)
+            push!(funcs.groups[grp], fidx)
+        else
+            funcs.groups[grp] = [fidx]
+        end
+        funcs.group_func[grp] = nothing
+    end
+    return
+end
+
 function _invalidate_groups(funcs::Functions, fidx::Int64)
     for grp in funcs.memberof[fidx]
         funcs.group_func[grp] = nothing

@@ -97,13 +97,16 @@ end
     @test NC.get_datadeps(func, func["f2"]) == [:dta=>d1]
     @test NC.get_probdep(func, func["f1"]) == false
     @test NC.get_groups(func, func["f2"]) == [:embedded, :monitor]
+    @test NC.get_groups(func, func["f1"]) == [:embedded]
+    NC.add_func_to_group(func, func["f1"], :monitor)
+    @test NC.get_groups(func, func["f1"]) == [:embedded, :monitor]
     @test NC.has_func(func, "f1")
     @test NC.has_func(func, func["f1"])
     @test NC.has_group(func, :monitor)
     @test NC.has_var(func, "v1")
     @test NC.has_data(func, "d1")
     @test NC.get_dim(func, :embedded) == 9
-    @test NC.get_dim(func, :monitor) == 2
+    @test NC.get_dim(func, :monitor) == 3
     u = [2.5, 4.0]
     d = (8.5,)
     prob = 3.25
@@ -144,5 +147,10 @@ end
     fun = func[:embedded]
     fun(out2, u, data=nothing, prob=prob)
     @test out2 == [u[1]+prob]
-    @test func[:embedded] == fun
+    @test func[:embedded] == fun  # test caching
+    @test_throws ArgumentError func[:test]
+    NC.add_func_to_group(func, func["func"], :test)
+    out2 .= 0
+    func[:test](out2, u, data=nothing, prob=prob)
+    @test out2 == [u[1]+prob]
 end
