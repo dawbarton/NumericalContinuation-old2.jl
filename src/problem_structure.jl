@@ -64,6 +64,7 @@ Base.getindex(prob::ProblemStructure) = prob.options
 Base.getindex(prob::ProblemStructure, key) = getindex(prob.options, key)
 Base.setindex!(prob::ProblemStructure, key, value) = setindex!(prob.options, key, value)
 
+get_numtype(::Type{T}) where T <: Number = T  # for convenience during testing of individual parts
 get_numtype(prob::ProblemStructure{T}) where T = T
 
 #--- Function forwarding
@@ -83,6 +84,6 @@ add_pars!(prob::ProblemStructure, args...; kwargs...) = add_pars!(prob.mfuncs, a
 
 function initialize!(prob::ProblemStructure{T}, args...) where T
     emit_signal(prob, :pre_initialization, prob)
-    mfunc_initialize!(T, prob.mfuncs, prob=prob)
+    initialize!(prob.mfuncs, prob)
     emit_signal(prob, :post_initialization, prob)
 end

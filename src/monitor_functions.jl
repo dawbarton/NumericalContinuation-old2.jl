@@ -75,7 +75,8 @@ end
 set_active!(mfunc::MonitorFunctions, midx::Int64, active) = set_dim!(get_vars(mfunc.funcs), mfunc.muidx[midx], active ? 1 : 0)
 set_active!(mfunc::MonitorFunctions, name::String, active) = set_active!(mfunc, mfunc[name], active)
 
-function mfunc_initialize!(T::Type{<:Number}, mfunc::MonitorFunctions; prob)
+function initialize!(mfunc::MonitorFunctions, prob)
+    T = get_numtype(prob)
     vars = get_vars(mfunc.funcs)
     data = get_data(mfunc.funcs)
     mfunc_data = zeros(T, length(mfunc))
