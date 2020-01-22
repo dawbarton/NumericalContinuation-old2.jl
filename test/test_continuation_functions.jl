@@ -97,6 +97,8 @@ end
     @test NC.get_datadeps(func, func["f2"]) == [:dta=>d1]
     @test NC.get_probdep(func, func["f1"]) == false
     @test NC.get_groups(func, func["f2"]) == [:embedded, :monitor]
+    NC.add_func_to_group(func, func["f2"], :monitor)
+    @test NC.get_groups(func, func["f2"]) == [:embedded, :monitor]
     @test NC.get_groups(func, func["f1"]) == [:embedded]
     NC.add_func_to_group(func, func["f1"], :monitor)
     @test NC.get_groups(func, func["f1"]) == [:embedded, :monitor]
