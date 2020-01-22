@@ -24,7 +24,7 @@
     io = IOBuffer()
     show(io, MIME("text/plain"), mfuncs)
     @test !isempty(take!(io))
-    @test NC.get_func(mfuncs) isa NC.Functions
+    @test NC.get_funcs(mfuncs) isa NC.Functions
     NC.set_active!(mfuncs, "mfunc1", false)
     out = zeros(2)
     NC.eval_func!(out, funcs, NC.get_funcs(funcs, :mfunc), zeros(5), data=mfunc_data, prob=nothing)

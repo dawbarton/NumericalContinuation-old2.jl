@@ -104,7 +104,7 @@ function mfunc_update_data!(data, mfunc::MonitorFunctions, u)
     end
 end
 
-get_func(mfunc::MonitorFunctions) = mfunc.funcs
+get_funcs(mfunc::MonitorFunctions) = mfunc.funcs
 
 function Base.show(io::IO, mime::MIME"text/plain", mfuncs::MonitorFunctions)
     vars = get_vars(mfuncs.funcs)
