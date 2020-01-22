@@ -373,6 +373,12 @@ function generate_func!(funcs::Functions, name::Symbol)
     end
 end
 
+function initialize!(funcs::Functions, prob)
+    for name in keys(funcs.groups)
+        generate_func!(funcs, name)
+    end
+end
+
 function Base.show(io::IO, mime::MIME"text/plain", funcs::Functions)
     println(io, "Functions ($(length(funcs)) functions):")
     for i in eachindex(funcs.names)
