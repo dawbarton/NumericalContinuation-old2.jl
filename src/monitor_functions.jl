@@ -28,6 +28,7 @@ end
 Base.length(mfunc::MonitorFunctions) = length(mfunc.names)
 Base.getindex(mfunc::MonitorFunctions, name::String) = mfunc.lookup[name]
 has_mfunc(mfunc::MonitorFunctions, name::String) = haskey(mfunc.lookup, name)
+has_mfunc(mfunc::MonitorFunctions, idx::Integer) = (idx > 0) && (idx <= length(mfunc))
 
 function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), prob=false, active::Bool=true, initial_value=nothing)
     if has_mfunc(mfunc, name)

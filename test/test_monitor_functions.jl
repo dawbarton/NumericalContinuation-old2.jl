@@ -29,6 +29,9 @@
     out = zeros(2)
     NC.eval_func!(out, funcs, NC.get_funcs(funcs, :mfunc), zeros(5), data=mfunc_data, prob=nothing)
     @test out == [-3.5, 0.5]    
+    @test NC.has_mfunc(mfuncs, "mfunc1")
+    @test NC.has_mfunc(mfuncs, mfuncs["mfunc1"])
+    @test !NC.has_mfunc(mfuncs, length(mfuncs)+1)
     
     vars = NC.Vars()
     data = NC.Data()

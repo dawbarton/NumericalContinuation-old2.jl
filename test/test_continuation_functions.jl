@@ -33,6 +33,7 @@
     @test NC.get_indices(v, v3) == 2:3
     @test nameof(v, v1) == "v1"
     @test NC.has_var(v, "v1")
+    @test NC.has_var(v, v["v1"])
     NC.set_u0!(v, v1, [1])
     NC.set_t0!(v, v1, [2])
     @test NC.get_u0(Float64, v) == [1, 1, 2]
@@ -58,6 +59,7 @@ end
     @test nameof(data, d2) == "d2"
     @test NC.get_data(data) == ((1, 2, 3), 1:1000)
     @test NC.has_data(data, "d1")
+    @test NC.has_data(data, data["d1"])
     @test length(data) == 2
     io = IOBuffer()
     show(io, MIME("text/plain"), data)
@@ -96,6 +98,7 @@ end
     @test NC.get_probdep(func, func["f1"]) == false
     @test NC.get_groups(func, func["f2"]) == [:embedded, :monitor]
     @test NC.has_func(func, "f1")
+    @test NC.has_func(func, func["f1"])
     @test NC.has_group(func, :monitor)
     @test NC.has_var(func, "v1")
     @test NC.has_data(func, "d1")

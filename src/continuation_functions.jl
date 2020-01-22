@@ -21,6 +21,7 @@ get_t0(vars::Vars, vidx::Int64) = vars.t0[vidx]
 Base.nameof(vars::Vars, vidx::Int64) = get_name(vars, vidx)
 Base.getindex(vars::Vars, name::String) = vars.lookup[name]
 has_var(vars::Vars, name::String) = haskey(vars.lookup, name)
+has_var(vars::Vars, idx::Integer) = (idx > 0) && (idx <= length(vars))
 
 function add_var!(vars::Vars, name::String, dim::Integer; u0=nothing, t0=nothing)
     if haskey(vars.lookup, name)
@@ -137,6 +138,7 @@ Base.getindex(data::Data, name::String) = data.lookup[name]
 
 get_data(data::Data) = (data.data...,)
 has_data(data::Data, name::String) = haskey(data.lookup, name)
+has_data(data::Data, idx::Integer) = (idx > 0) && (idx <= length(data))
 
 Base.length(data::Data) = length(data.names)
 
@@ -181,6 +183,7 @@ get_groups(funcs::Functions, fidx::Int64) = funcs.memberof[fidx]
 Base.nameof(funcs::Functions, fidx::Int64) = get_name(funcs, fidx)
 Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
 has_func(funcs::Functions, name::String) = haskey(funcs.lookup, name)
+has_func(funcs::Functions, idx::Integer) = (idx > 0) && (idx <= length(funcs))
 
 function _invalidate_groups(funcs::Functions, fidx::Int64)
     for grp in funcs.memberof[fidx]
