@@ -268,6 +268,7 @@ end
 
 _convert_memberof(memberof::Vector{Symbol}) = memberof
 _convert_memberof(memberof::Symbol) = [memberof]
+_convert_memberof(memberof::Union{Nothing, Tuple{}}) = Symbol[]
 
 function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, memberof=:embedded; data=Pair{Symbol, Int64}[], prob::Bool=false)
     if has_func(funcs, name)

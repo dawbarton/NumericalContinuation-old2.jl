@@ -84,8 +84,9 @@ end
     NC.add_func!(func, "f1c", 1, f1, "v2", data=:data=>"d1")
     NC.add_func!(func, "f1d", 1, f1, v1, data="d1")
     NC.add_func!(func, "f1e", 1, f1, "v1", data=d1)
+    NC.add_func!(func, "f1f", 1, f1, "v1", nothing, data=d1)
     NC.add_func!(func, "f3", 1, f3, ("v1", "v2"), prob=true)
-    @test length(func) == 8
+    @test length(func) == 9
     @test NC.get_vars(func) isa NC.Vars
     @test NC.get_data(func) isa NC.Data
     @test collect(NC.get_groups(func)) == [:embedded, :monitor]
