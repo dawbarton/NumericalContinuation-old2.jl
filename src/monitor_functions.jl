@@ -95,7 +95,7 @@ function initialize!(mfunc::MonitorFunctions, prob)
     return mfunc
 end
 
-function mfunc_update_data!(data, mfunc::MonitorFunctions, u)
+function update_data!(mfunc::MonitorFunctions, u; data, prob=nothing)
     vars = get_vars(mfunc.funcs)
     mfunc_data = data[mfunc.didx]
     for i in eachindex(mfunc.muidx)

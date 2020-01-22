@@ -12,13 +12,13 @@
     @test NC.get_dim(vars) == 5
     @test length(mfuncs) == 1
     NC.add_mfunc!(mfuncs, "mfunc2", u -> u[2]+0.5, "v1", initial_value=0.5, active=false)
-    NC.mfunc_initialize!(Float64, mfuncs, prob=nothing)
+    NC.initialize!(mfuncs, Float64)
     @test NC.get_data(data, data["mfunc_data"]) == [-1, 0.5]
     @test NC.get_u0(vars, vars["mfunc1"]) == [-1]
     @test NC.get_u0(vars, vars["mfunc2"]) == [0.5]
     @test NC.get_u0(Float64, vars) == [0, 0, 0, 0, -1]
     mfunc_data = NC.get_data(data)
-    NC.mfunc_update_data!(mfunc_data, mfuncs, [0, 0, 0, 0, 2.5])
+    NC.update_data!(mfuncs, [0, 0, 0, 0, 2.5], data=mfunc_data)
     NC.set_active!(mfuncs, mfuncs["mfunc2"], true)
     @test NC.get_u0(Float64, vars) == [0, 0, 0, 0, -1, 0.5]
     io = IOBuffer()
@@ -41,7 +41,7 @@
     @test_throws ArgumentError NC.add_pars!(mfuncs, ["p1", "p2", "p3", "p4", "p5"], "v1")
     NC.add_pars!(mfuncs, ["p1", "p2", "p3", "p4"], "v1")
     @test length(funcs) == 4
-    NC.mfunc_initialize!(Float64, mfuncs, prob=nothing)
+    NC.initialize!(mfuncs, Float64)
     @test NC.get_data(data, data["mfunc_data"]) == 1:4
     @test NC.get_dim(vars) == 4
     @test NC.get_dim(funcs, :mfunc) == 4
