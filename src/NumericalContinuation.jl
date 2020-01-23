@@ -8,6 +8,7 @@ include("continuation_functions.jl")
 include("monitor_functions.jl")
 include("events.jl")
 include("problem_structure.jl")
+include("covering.jl")
 
 include("Cover1D.jl")
 
