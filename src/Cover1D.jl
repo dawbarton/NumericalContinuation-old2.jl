@@ -4,7 +4,8 @@ using Base: RefValue, @kwdef
 using LinearAlgebra: norm
 using ..NumericalContinuation: NumericalContinuation, Vars, Functions
 using ..NumericalContinuation: get_numtype, get_vars, get_funcs, get_options, 
-    add_data!, add_mfunc!, add_projection!, update_projection!
+    add_data!, add_mfunc!, add_projection!, update_projection!, get_dim,
+    get_initial_u, get_initial_t, get_initial_data
 
 
 # TODO: u indices change when mfuncs are active/inactive - how is that dealt
@@ -73,7 +74,7 @@ struct Atlas1DOptions{T <: Number}
     step_increase::T
     α_max::T
     ga::T
-    max_steps::Int64
+    max_steps::Tuple{Int64, Int64}
 end
 
 function Atlas1DOptions(prob)
@@ -88,7 +89,7 @@ function Atlas1DOptions(prob)
     step_increase     = get(opts, "cont.step_increase",     T(1.125))::T
     α_max             = get(opts, "cont.α_max", get(opts, "cont.alpha_max", T(0.125)))::T
     ga                = get(opts, "cont.ga",                T(0.95))::T
-    max_steps         = get(opts, "cont.max_steps",         100)::Int64
+    max_steps         = get(opts, "cont.max_steps",         (100,100))::Tuple{Int64, Int64}
     return Atlas1DOptions{T}(correct_initial, initial_step, initial_direction, 
         step_min, step_max, step_decrease, step_increase, α_max, ga, max_steps)
 end
