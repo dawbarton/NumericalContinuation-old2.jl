@@ -3,9 +3,9 @@ module Cover1D
 using Base: RefValue, @kwdef
 using LinearAlgebra: norm
 using ..NumericalContinuation: NumericalContinuation, Vars, Functions
-using ..NumericalContinuation: get_numtype, get_vars, get_funcs, get_options, 
-    add_data!, add_mfunc!, add_projection!, update_projection!, get_dim,
-    get_initial_u, get_initial_t, get_initial_data
+using ..NumericalContinuation: get_numtype, get_vars, get_data, get_funcs,
+    get_options, add_data!, add_mfunc!, add_projection!, update_projection!,
+    get_dim, get_initial_u, get_initial_t, get_initial_data
 
 
 # TODO: u indices change when mfuncs are active/inactive - how is that dealt
@@ -122,8 +122,8 @@ function Atlas1D(prob)
     # Options
     options = Atlas1DOptions(prob)
     # Initial chart data
-    u0 = get_initial_u(vars)
-    t0 = get_initial_t(vars)  # assumption is that the active continuation variable has a non-zero value for t
+    u0 = get_initial_u(T, vars)
+    t0 = get_initial_t(T, vars)  # assumption is that the active continuation variable has a non-zero value for t
     data = get_initial_data(get_data(prob))
     current_chart = Chart(pt=0, pt_type=:IP, u=u0, TS=t0, t=options.initial_direction.*t0./norm(t0), 
         data=data, R=options.initial_step, s=options.initial_direction)
