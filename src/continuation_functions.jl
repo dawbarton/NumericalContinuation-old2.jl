@@ -17,7 +17,7 @@ get_name(vars::Vars, vidx::Int64) = vars.names[vidx]
 get_dim(vars::Vars, vidx::Int64) = vars.dims[vidx]
 get_indices(vars::Vars, vidx::Int64) = vars.indices[vidx]
 get_initial_u(vars::Vars, vidx::Int64) = vars.u0[vidx]
-get_t0(vars::Vars, vidx::Int64) = vars.t0[vidx]
+get_initial_t(vars::Vars, vidx::Int64) = vars.t0[vidx]
 Base.nameof(vars::Vars, vidx::Int64) = get_name(vars, vidx)
 Base.getindex(vars::Vars, name::String) = vars.lookup[name]
 has_var(vars::Vars, name::String) = haskey(vars.lookup, name)
@@ -80,7 +80,7 @@ function get_initial_u(T::Type{<: Number}, vars::Vars)
     return u0
 end
 
-function get_t0(T::Type{<: Number}, vars::Vars)
+function get_initial_t(T::Type{<: Number}, vars::Vars)
     t0 = Vector{T}()
     for vidx in 2:length(vars.t0)
         if vars.dims[vidx] != 0
