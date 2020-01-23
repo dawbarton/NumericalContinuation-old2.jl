@@ -12,18 +12,18 @@
     @test NC.get_dim(v, vall) == 3
     @test NC.get_dim(v) == 3
     @test length(v) == 5
-    @test NC.get_u0(v, v1) === nothing
-    @test NC.get_u0(v, v2) == [1.25, 2.5]
-    @test NC.get_u0(v, v3) == 1:2
-    @test NC.get_u0(v, v3) isa UnitRange
+    @test NC.get_initial_u(v, v1) === nothing
+    @test NC.get_initial_u(v, v2) == [1.25, 2.5]
+    @test NC.get_initial_u(v, v3) == 1:2
+    @test NC.get_initial_u(v, v3) isa UnitRange
     @test NC.get_t0(v, v1) === nothing
     @test NC.get_t0(v, v2) === nothing
     @test NC.get_t0(v, v3) == 3:4
     @test NC.get_t0(v, v3) isa UnitRange
-    @test NC.get_u0(Int64, v) == [0, 1, 2]
-    @test NC.get_u0(Int64, v) isa Vector{Int64}
-    @test NC.get_u0(Float64, v) == [0.0, 1.0, 2.0]
-    @test NC.get_u0(Float64, v) isa Vector{Float64}
+    @test NC.get_initial_u(Int64, v) == [0, 1, 2]
+    @test NC.get_initial_u(Int64, v) isa Vector{Int64}
+    @test NC.get_initial_u(Float64, v) == [0.0, 1.0, 2.0]
+    @test NC.get_initial_u(Float64, v) isa Vector{Float64}
     @test NC.get_t0(Int64, v) == [0, 3, 4]
     @test NC.get_t0(Int64, v) isa Vector{Int64}
     @test NC.get_t0(Float64, v) == [0.0, 3.0, 4.0]
@@ -36,12 +36,12 @@
     @test NC.has_var(v, v["v1"])
     NC.set_u0!(v, v1, [1])
     NC.set_t0!(v, v1, [2])
-    @test NC.get_u0(Float64, v) == [1, 1, 2]
+    @test NC.get_initial_u(Float64, v) == [1, 1, 2]
     @test NC.get_t0(Float64, v) == [2, 3, 4]
     @test_throws ArgumentError NC.set_dim!(v, 1, 5)
     NC.set_dim!(v, v1, 2)
     @test NC.get_indices(v, v1) == 1:2
-    @test_throws ErrorException NC.get_u0(Float64, v)  
+    @test_throws ErrorException NC.get_initial_u(Float64, v)  
     io = IOBuffer()
     show(io, MIME("text/plain"), v)
     @test !isempty(take!(io))
@@ -52,12 +52,12 @@ end
     d1 = NC.add_data!(data, "d1", nothing)
     d2 = NC.add_data!(data, "d2", 1:1000)
     @test_throws ArgumentError NC.add_data!(data, "d1", nothing)
-    @test NC.get_data(data, data["d1"]) === nothing
-    @test NC.get_data(data, d2) == 1:1000
-    NC.set_data!(data, d1, (1, 2, 3))
-    @test NC.get_data(data, data["d1"]) == (1, 2, 3)
+    @test NC.get_initial_data(data, data["d1"]) === nothing
+    @test NC.get_initial_data(data, d2) == 1:1000
+    NC.set_initial_data!(data, d1, (1, 2, 3))
+    @test NC.get_initial_data(data, data["d1"]) == (1, 2, 3)
     @test nameof(data, d2) == "d2"
-    @test NC.get_data(data) == ((1, 2, 3), 1:1000)
+    @test NC.get_initial_data(data) == ((1, 2, 3), 1:1000)
     @test NC.has_data(data, "d1")
     @test NC.has_data(data, data["d1"])
     @test length(data) == 2

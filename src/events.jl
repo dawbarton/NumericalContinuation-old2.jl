@@ -79,7 +79,7 @@ end
 function initialize!(events::Events, prob)
     T = get_numtype(prob)
     data = get_data(events.funcs)
-    set_data!(data, events.didx, zeros(T, sum(events.func_type .!== :embedded))) # storage for non-embedded function output
+    set_initial_data!(data, events.didx, zeros(T, sum(events.func_type .!== :embedded))) # storage for non-embedded function output
     return events
 end
 

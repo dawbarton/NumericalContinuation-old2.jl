@@ -81,12 +81,12 @@ function initialize!(mfunc::MonitorFunctions, prob)
     vars = get_vars(mfunc.funcs)
     data = get_data(mfunc.funcs)
     mfunc_data = zeros(T, length(mfunc))
-    set_data!(data, mfunc.didx, mfunc_data)
+    set_initial_data!(data, mfunc.didx, mfunc_data)
     output = zeros(T, 1)
     for i in eachindex(mfunc.muidx)
-        mu = get_u0(vars, mfunc.muidx[i])
+        mu = get_initial_u(vars, mfunc.muidx[i])
         if mu === nothing
-            eval_func!(output, mfunc.funcs, [mfunc.fidx[i]], get_u0(T, vars), data=get_data(data), prob=prob)
+            eval_func!(output, mfunc.funcs, [mfunc.fidx[i]], get_initial_u(T, vars), data=get_initial_data(data), prob=prob)
             set_u0!(vars, mfunc.muidx[i], [output[1]])
             mfunc_data[i] = output[1]
         else

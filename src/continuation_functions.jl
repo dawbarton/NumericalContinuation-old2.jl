@@ -16,7 +16,7 @@ Vars() = Vars(String["all"], Dict{String, Int64}("all"=>1), Int64[0], UnitRange{
 get_name(vars::Vars, vidx::Int64) = vars.names[vidx]
 get_dim(vars::Vars, vidx::Int64) = vars.dims[vidx]
 get_indices(vars::Vars, vidx::Int64) = vars.indices[vidx]
-get_u0(vars::Vars, vidx::Int64) = vars.u0[vidx]
+get_initial_u(vars::Vars, vidx::Int64) = vars.u0[vidx]
 get_t0(vars::Vars, vidx::Int64) = vars.t0[vidx]
 Base.nameof(vars::Vars, vidx::Int64) = get_name(vars, vidx)
 Base.getindex(vars::Vars, name::String) = vars.lookup[name]
@@ -64,7 +64,7 @@ set_t0!(vars::Vars, vidx::Int64, t0) = vars.t0[vidx] = t0
 get_dim(vars::Vars) = vars.indices[end].stop
 Base.length(vars::Vars) = length(vars.names)
 
-function get_u0(T::Type{<: Number}, vars::Vars)
+function get_initial_u(T::Type{<: Number}, vars::Vars)
     u0 = Vector{T}()
     for vidx in 2:length(vars.u0)
         if vars.dims[vidx] != 0
@@ -128,15 +128,15 @@ function add_data!(data::Data, name::String, newdata=nothing)
 end
 
 get_name(data::Data, didx::Int64) = data.names[didx]
-get_data(data::Data, didx::Int64) = data.data[didx]
-set_data!(data::Data, didx::Int64, newdata) = data.data[didx] = newdata
+get_initial_data(data::Data, didx::Int64) = data.data[didx]
+set_initial_data!(data::Data, didx::Int64, newdata) = data.data[didx] = newdata
 
 Base.nameof(data::Data, didx::Int64) = get_name(data, didx)
 Base.getindex(data::Data, name::String) = data.lookup[name]
 
 # Functions operating on the collection of continuation data
 
-get_data(data::Data) = (data.data...,)
+get_initial_data(data::Data) = (data.data...,)
 has_data(data::Data, name::String) = haskey(data.lookup, name)
 has_data(data::Data, idx::Integer) = (idx > 0) && (idx <= length(data))
 

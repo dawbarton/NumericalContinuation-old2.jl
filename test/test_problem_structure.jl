@@ -32,8 +32,8 @@
 
     T = NC.get_numtype(prob)
     NC.initialize!(prob)
-    u0 = NC.get_u0(T, vars)
-    d0 = NC.get_data(data)
+    u0 = NC.get_initial_u(T, vars)
+    d0 = NC.get_initial_data(data)
     NC.update_data!(prob, u0, data=d0)
     u1 = u0 .+ 1
     u1[end] = sum(u1[1:10].^2)  # manually fix up the monitor function rather than using a nonlinear solve

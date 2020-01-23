@@ -37,8 +37,8 @@
     NC.initialize!(mfuncs, Float64)
     NC.initialize!(events, Float64)
 
-    u0 = NC.get_u0(Float64, vars)
-    d0 = NC.get_data(data)
+    u0 = NC.get_initial_u(Float64, vars)
+    d0 = NC.get_initial_data(data)
     NC.update_data!(mfuncs, u0, data=d0, prob=nothing)
     NC.update_data!(events, u0, data=d0, prob=nothing)
     ev0 = NC.check_events(events, d0, d0)

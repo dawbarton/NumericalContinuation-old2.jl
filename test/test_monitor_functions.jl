@@ -13,15 +13,15 @@
     @test length(mfuncs) == 1
     NC.add_mfunc!(mfuncs, "mfunc2", u -> u[2]+0.5, "v1", initial_value=0.5, active=false)
     NC.initialize!(mfuncs, Float64)
-    @test NC.get_data(data, data["mfunc_data"]) == [-1, 0.5]
-    @test NC.get_u0(vars, vars["mfunc1"]) == [-1]
-    @test NC.get_u0(vars, vars["mfunc2"]) == [0.5]
-    @test NC.get_u0(Float64, vars) == [0, 0, 0, 0, -1]
-    mfunc_data = NC.get_data(data)
+    @test NC.get_initial_data(data, data["mfunc_data"]) == [-1, 0.5]
+    @test NC.get_initial_u(vars, vars["mfunc1"]) == [-1]
+    @test NC.get_initial_u(vars, vars["mfunc2"]) == [0.5]
+    @test NC.get_initial_u(Float64, vars) == [0, 0, 0, 0, -1]
+    mfunc_data = NC.get_initial_data(data)
     NC.update_data!(mfuncs, [0, 0, 0, 0, 2.5], data=mfunc_data)
     @test NC.get_mfunc_value(mfuncs, mfuncs["mfunc2"], mfunc_data) == 0.5
     NC.set_active!(mfuncs, mfuncs["mfunc2"], true)
-    @test NC.get_u0(Float64, vars) == [0, 0, 0, 0, -1, 0.5]
+    @test NC.get_initial_u(Float64, vars) == [0, 0, 0, 0, -1, 0.5]
     io = IOBuffer()
     show(io, MIME("text/plain"), mfuncs)
     @test !isempty(take!(io))
@@ -43,7 +43,7 @@
     NC.add_pars!(mfuncs, ["p1", "p2", "p3", "p4"], "v1")
     @test length(funcs) == 4
     NC.initialize!(mfuncs, Float64)
-    @test NC.get_data(data, data["mfunc_data"]) == 1:4
+    @test NC.get_initial_data(data, data["mfunc_data"]) == 1:4
     @test NC.get_dim(vars) == 4
     @test NC.get_dim(funcs, :mfunc) == 4
 end
