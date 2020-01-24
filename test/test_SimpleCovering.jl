@@ -1,3 +1,4 @@
+using NumericalContinuation
 using NumericalContinuation.AlgebraicProblems
 
 @testset "SimpleCovering" begin

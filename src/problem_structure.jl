@@ -140,8 +140,9 @@ end
 
 #--- Continuation
 
-function continuation!(prob::ProblemStructure, args...; dim=1, cover=SimpleCoverings.cover!)
+function continuation!(prob::ProblemStructure, args...; dim=1, covering=SimpleCoverings.covering)
     set_domain!(prob, args...)
     initialize!(prob)
-    return cover(prob, dim=dim)
+    atlas = covering(prob, dim=dim)
+    return Base.invokelatest(cover!, atlas, prob)
 end

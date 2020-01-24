@@ -11,11 +11,17 @@ using ..NumericalContinuation: get_numtype, get_vars, get_data, get_funcs,
 using NLsolve: NLsolve
 using ForwardDiff: ForwardDiff
 
+using Infiltrator
+
 # TODO: u indices change when mfuncs are active/inactive - how is that dealt
 # with during covering? Might need to adjust the setactive function to update
 # u & TS at the same time.
 
 # TODO: how to deal with storing variable indices? They might change during continuation...
+
+# TODO: events
+
+# TODO: pass prob or atlas or both? (embed prob in atlas)
 
 #--- Pseudo-arclength equation
 
@@ -35,7 +41,7 @@ function NumericalContinuation.add_projection!(prob, ::Type{PseudoArclength})
     T = get_numtype(prob)
     didx = add_data!(prob, "pseudo-arclength", (u=T[], TS=T[]))
     pseudo = PseudoArclength(didx)
-    midx = add_mfunc!(prob, "pseudo-arclength", pseudo, "all", active=false)
+    midx = add_mfunc!(prob, "pseudo-arclength", pseudo, "all", data=didx, active=false, initial_value=0)
     return (pseudo, midx)
 end
 
@@ -130,7 +136,7 @@ function Atlas1D(prob, projection)
     data = get_initial_data(get_data(prob))
     status = options.correct_initial ? :predicted : :corrected
     current_chart = Chart(pt=0, pt_type=:IP, u=u0, TS=t0, t=options.initial_direction.*t0./norm(t0), 
-        data=data, R=options.initial_step, s=options.initial_direction)
+        data=data, R=options.initial_step, s=options.initial_direction, status=status)
     # Construct!
     D = typeof(data)
     C = typeof(current_chart)
@@ -139,22 +145,24 @@ function Atlas1D(prob, projection)
         Ref(current_chart), C[], C[], options)
 end
 
-#--- State machine
+#--- Covering
 
-function cover!(prob; dim)
+function covering(prob; dim)
     if dim == 1
         projection = get(prob[], "cont.projection", PseudoArclength)
-        atlas = Atlas1D(prob, projection)
-        return cover!()
+        return Atlas1D(prob, projection)
     else
         throw(ArgumentError("Only able to compute 1D coverings at the moment"))
     end
 end
 
-function cover!(atlas::Atlas1D, prob)
+#--- State machine
+
+function NumericalContinuation.cover!(atlas::Atlas1D, prob)
     state::Any = init_covering!
     while state !== nothing
-        state(atlas, prob)
+        state = state(atlas, prob)
+        println(nameof(state))
     end 
     return atlas
 end
@@ -172,15 +180,15 @@ end
 # Next state
 
 * [`Coverings.correct!`](@ref) if chart status is `:predicted`,
-* [`Coverings.addchart!`](@ref) if chart status is `:corrected`,
+* [`Coverings.add_chart!`](@ref) if chart status is `:corrected`,
 * otherwise error.
 """
 function init_covering!(atlas::Atlas1D, prob)
     # Choose the next state
-    if atlas.current_chart.status === :predicted
+    if atlas.current_chart[].status === :predicted
         return correct!
-    elseif atlas.current_chart.status === :corrected
-        return addchart!
+    elseif atlas.current_chart[].status === :corrected
+        return add_chart!
     else
         throw(ErrorException("current_chart has an invalid initial status"))
     end
@@ -201,7 +209,7 @@ condition as previously specified.
 
 # Next state
 
-* [`SimpleCoverings.addchart!`](@ref) if the chart status is `:corrected`; otherwise
+* [`SimpleCoverings.add_chart!`](@ref) if the chart status is `:corrected`; otherwise
 * [`SimpleCoverings.refine!`](@ref).
 """
 function correct!(atlas::Atlas1D, prob)
@@ -214,21 +222,21 @@ function correct!(atlas::Atlas1D, prob)
     chart = atlas.current_chart[]
     # Set up the projection condition
     update_projection!(atlas.projection, chart.u, chart.TS, data=chart.data, prob=prob)
+    @infiltrate
     # Solve zero problem
-    sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, prob=chart.prob)
+    sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, prob=prob)
     if NLsolve.converged(sol)
         chart.u .= sol.zero
         chart.status = :corrected
-        return addchart!
+        return add_chart!
     else
         chart.status = :rejected
         return refine!
     end
 end
 
-
 """
-    addchart!(atlas, prob)
+    add_chart!(atlas, prob)
 
 Add a corrected chart to the list of charts that defines the current curve and
 update any calculated properties (e.g., tangent vector).
@@ -251,7 +259,7 @@ update any calculated properties (e.g., tangent vector).
 1. Update monitor functions.
 2. Locate events.
 """
-function addchart!(atlas::Atlas1D, prob)
+function add_chart!(atlas::Atlas1D, prob)
     @noinline function jacobian(funcs, u0; data, prob)
         # TODO: sort out the jacobian calculation...
         ForwardDiff.jacobian((res, u) -> funcs(res, u, data=data, prob=prob), similar(u0), u0)
