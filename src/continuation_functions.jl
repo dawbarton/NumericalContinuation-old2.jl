@@ -56,8 +56,8 @@ function set_dim!(vars::Vars, vidx::Int64, dim::Integer)
     return vars
 end
 
-set_u0!(vars::Vars, vidx::Int64, u0) = vars.u0[vidx] = u0
-set_t0!(vars::Vars, vidx::Int64, t0) = vars.t0[vidx] = t0
+set_initial_u!(vars::Vars, vidx::Int64, u0) = vars.u0[vidx] = u0
+set_initial_t!(vars::Vars, vidx::Int64, t0) = vars.t0[vidx] = t0
 
 # Functions operating on the collection of variables
 

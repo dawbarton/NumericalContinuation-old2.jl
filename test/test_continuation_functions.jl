@@ -34,8 +34,8 @@
     @test nameof(v, v1) == "v1"
     @test NC.has_var(v, "v1")
     @test NC.has_var(v, v["v1"])
-    NC.set_u0!(v, v1, [1])
-    NC.set_t0!(v, v1, [2])
+    NC.set_initial_u!(v, v1, [1])
+    NC.set_initial_t!(v, v1, [2])
     @test NC.get_initial_u(Float64, v) == [1, 1, 2]
     @test NC.get_initial_t(Float64, v) == [2, 3, 4]
     @test_throws ArgumentError NC.set_dim!(v, 1, 5)
