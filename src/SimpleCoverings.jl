@@ -1,4 +1,4 @@
-module Cover1D
+module SimpleCoverings
 
 using Base: RefValue, @kwdef
 using LinearAlgebra: norm
@@ -125,6 +125,7 @@ function Atlas1D(prob)
     u0 = get_initial_u(T, vars)
     t0 = get_initial_t(T, vars)  # assumption is that the active continuation variable has a non-zero value for t
     data = get_initial_data(get_data(prob))
+    status = options.correct_initial ? :predicted : :corrected
     current_chart = Chart(pt=0, pt_type=:IP, u=u0, TS=t0, t=options.initial_direction.*t0./norm(t0), 
         data=data, R=options.initial_step, s=options.initial_direction)
     # Construct!
@@ -132,8 +133,10 @@ function Atlas1D(prob)
     C = typeof(current_chart)
     P = typeof(projection)
     return Atlas1D{T, D, P}(vars, funcs, projection, projection_idx, 
-        Ref(current_chart), Vector{C}(), Vector{C}(), options)
+        Ref(current_chart), C[], C[], options)
 end
+
+#--- Simple
 
 
 end # module

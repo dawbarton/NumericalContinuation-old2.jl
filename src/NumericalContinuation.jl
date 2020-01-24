@@ -10,7 +10,7 @@ include("events.jl")
 include("problem_structure.jl")
 include("covering.jl")
 
-include("Cover1D.jl")
+include("SimpleCoverings.jl")
 
 include("AlgebraicProblems.jl")
 include("ODE.jl")
