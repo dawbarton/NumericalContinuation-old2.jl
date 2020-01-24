@@ -10,7 +10,7 @@ export add_mfunc!, add_par!, add_pars!
 
 abstract type AbstractProblemStructure{T} end
 
-struct ProblemStructure{T<:Number} <: AbstractProblemStructure{T}
+struct ProblemStructure{T<:Number, C} <: AbstractProblemStructure{T}
     options::Options
     signals::Signals
     vars::Vars
@@ -18,9 +18,10 @@ struct ProblemStructure{T<:Number} <: AbstractProblemStructure{T}
     funcs::Functions
     mfuncs::MonitorFunctions
     events::Events
+    covering::C
 end
 
-function ProblemStructure(T::Type{<:Number}=Float64)
+function ProblemStructure(T::Type{<:Number}=Float64; covering=SimpleCoverings.SimpleCovering{1, SimpleCoverings.PseudoArclength})
     options = Options()
     signals = Signals()
     vars = Vars()
@@ -36,7 +37,7 @@ function ProblemStructure(T::Type{<:Number}=Float64)
     for signal in SIGNALS
         add_signal!(signals, signal, (:(prob,)))
     end
-    return ProblemStructure{T}(options, signals, vars, data, funcs, mfuncs, events)
+    return ProblemStructure{T, typeof(covering)}(options, signals, vars, data, funcs, mfuncs, events, covering)
 end
 
 const SIGNALS = [:pre_initialization, :post_initialization, :update_data]
@@ -88,12 +89,18 @@ check_events(prob::ProblemStructure, args...; kwargs...) = check_events(prob.eve
 
 #--- Initialization
 
-function initialize!(prob::ProblemStructure{T}, args...) where T
+function initialize!(prob::ProblemStructure{T}) where T
     emit_signal(prob, :pre_initialization, prob)
+    # Initialise everything
     initialize!(prob.funcs, prob)
     initialize!(prob.mfuncs, prob)
     initialize!(prob.events, prob)
+    covering = initialize!(prob.covering, prob)
+    # Create a new problem structure now the covering is made concrete
+    newprob = ProblemStructure{T}(prob.options, prob.signals, prob.vars, prob.data, 
+        prob.funcs, prob.mfuncs, prob.events, covering)
     emit_signal(prob, :post_initialization, prob)
+    return newprob
 end
 
 #--- Updating
@@ -102,4 +109,42 @@ function update_data!(prob::ProblemStructure, u; data)
     update_data!(prob.mfuncs, u, data=data, prob=prob)
     update_data!(prob.events, u, data=data, prob=prob)
     emit_signal(prob, :update_data, u, data=data, prob=prob)
+end
+
+#--- Computational domain
+
+function set_domain!(prob::ProblemStructure{T}, args...) where T
+    # Check parameters to avoid corrupting the internal data structure
+    for arg in args
+        if arg isa Pair{String, <:Any}
+            var = first(arg)
+        elseif arg isa String
+            var = arg
+        else
+            throw(ArgumentError("Expected continuation parameter as a string (e.g., \"p\") or string pair (e.g., \"p\"=>[-1, 1])"))
+        end
+        if !has_mfunc(prob.mfuncs, var)
+            throw(ArgumentError("Unknown continuation parameter"))
+        end
+    end
+    # Add boundaries and set active continuation parameters
+    for arg in args
+        if arg isa Pair
+            var = prob.mfuncs[first(arg)]
+            add_event!(prob, "Boundary ($(first(arg)))", var, last(arg), kind=:EP)
+        else
+            var = prob.mfuncs[arg]
+        end
+        set_active!(prob.mfuncs, var, true)
+        vidx = get_mfunc_var(prob.mfuncs, var)
+        if get_initial_t(prob.vars, vidx) === nothing
+            set_initial_t!(prob.vars, vidx, [one(T)])
+        end
+    end
+end
+
+#--- Continuation
+
+function continuation!(prob::ProblemStructure, args...)
+
 end

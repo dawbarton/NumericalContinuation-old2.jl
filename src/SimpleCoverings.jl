@@ -1,12 +1,15 @@
 module SimpleCoverings
 
 using Base: RefValue, @kwdef
-using LinearAlgebra: norm
-using ..NumericalContinuation: NumericalContinuation, Vars, Functions
+using LinearAlgebra: norm, dot
+using ..NumericalContinuation: NumericalContinuation
+using ..NumericalContinuation: Vars, Functions
 using ..NumericalContinuation: get_numtype, get_vars, get_data, get_funcs,
     get_options, add_data!, add_mfunc!, add_projection!, update_projection!,
     get_dim, get_initial_u, get_initial_t, get_initial_data
 
+using NLsolve: NLsolve
+using ForwardDiff: ForwardDiff
 
 # TODO: u indices change when mfuncs are active/inactive - how is that dealt
 # with during covering? Might need to adjust the setactive function to update
@@ -94,12 +97,12 @@ function Atlas1DOptions(prob)
         step_min, step_max, step_decrease, step_increase, α_max, ga, max_steps)
 end
 
-#--- Atlas
+#--- Atlas1D
 
-struct Atlas1D{T, D, P}
+struct Atlas1D{T, D, J}
     vars::Vars
     funcs::Functions
-    projection::P
+    projection::J
     projection_idx::Int64
     current_chart::RefValue{Chart{T, D}}
     current_curve::Vector{Chart{T, D}}
@@ -107,7 +110,7 @@ struct Atlas1D{T, D, P}
     options::Atlas1DOptions{T}
 end
 
-function Atlas1D(prob)
+function Atlas1D(prob, projection)
     T = get_numtype(prob)
     # Check dimensionality; should have a 1D deficit
     vars = get_vars(prob)
@@ -118,7 +121,7 @@ function Atlas1D(prob)
         throw(ErrorException("Problem is not suitable for 1D continuation; $udim variables != $fdim+1 functions"))
     end
     # Projection condition (typically PseudoArclength)
-    (projection, projection_idx) = add_projection!(prob, get(prob[], "cont.projection", PseudoArclength))
+    (projection, projection_idx) = add_projection!(prob, projection)
     # Options
     options = Atlas1DOptions(prob)
     # Initial chart data
@@ -131,12 +134,283 @@ function Atlas1D(prob)
     # Construct!
     D = typeof(data)
     C = typeof(current_chart)
-    P = typeof(projection)
-    return Atlas1D{T, D, P}(vars, funcs, projection, projection_idx, 
+    J = typeof(projection)
+    return Atlas1D{T, D, J}(vars, funcs, projection, projection_idx, 
         Ref(current_chart), C[], C[], options)
 end
 
-#--- Simple
+#--- State machine
+
+function NumericalContinuation.cover_manifold!(atlas::Atlas1D, prob)
+    state::Any = init_covering!
+    while state !== nothing
+        state(atlas, prob)
+    end 
+    return prob
+end
+
+#--- States of the state machine
+
+"""
+    init_covering!(atlas, prob)
+
+Initialise the data structures associated with the covering (atlas) algorithm.
+
+# Outline
+
+1. Determine the real entry point into the finite state machine based on the
+   current chart status.
+
+# Next state
+
+* [`Coverings.correct!`](@ref) if chart status is `:predicted`,
+* [`Coverings.addchart!`](@ref) if chart status is `:corrected`,
+* otherwise error.
+"""
+function init_covering!(atlas::Atlas1D, prob)
+    # Choose the next state
+    if atlas.current_chart.status === :predicted
+        return correct!
+    elseif atlas.current_chart.status === :corrected
+        return addchart!
+    else
+        throw(ErrorException("current_chart has an invalid initial status"))
+    end
+end
+
+"""
+    correct!(atlas, prob)
+
+Correct the (predicted) solution in the current chart with the projection
+condition as previously specified.
+
+# Outline
+
+1. Solve the zero-problem with the current chart as the starting guess.
+2. Determine whether the solver converged;
+    * if converged, set the chart status to `:corrected`, otherwise
+    * if not converged, set the chart status to `:rejected`.
+
+# Next state
+
+* [`SimpleCoverings.addchart!`](@ref) if the chart status is `:corrected`; otherwise
+* [`SimpleCoverings.refine!`](@ref).
+"""
+function correct!(atlas::Atlas1D, prob)
+    # Function barrier
+    # TODO: turn this into a structure rather than a closure and use the OnceDifferentiable wrapper to set up caching?
+    @noinline function solve!(funcs, u0; data, prob)
+        NLsolve.nlsolve((res, u) -> funcs(res, u, data=data, prob=prob), u0)
+    end
+    # Current chart
+    chart = atlas.current_chart[]
+    # Set up the projection condition
+    update_projection!(atlas.projection, chart.u, chart.TS, data=chart.data, prob=prob)
+    # Solve zero problem
+    sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, prob=chart.prob)
+    if NLsolve.converged(sol)
+        chart.u .= sol.zero
+        chart.status = :corrected
+        return addchart!
+    else
+        chart.status = :rejected
+        return refine!
+    end
+end
+
+
+"""
+    addchart!(atlas, prob)
+
+Add a corrected chart to the list of charts that defines the current curve and
+update any calculated properties (e.g., tangent vector).
+
+# Outline
+
+1. Determine whether the chart is an end point (e.g., the maximum number of
+   iterations has been reached).
+2. Update the tangent vector of the chart.
+3. Check whether the chart provides an adequate representation of the current
+   curve (e.g., whether the angle between the tangent vectors is sufficiently
+   small).
+
+# Next state
+
+* [`SimpleCoverings.flush!`](@ref).
+
+# To do
+
+1. Update monitor functions.
+2. Locate events.
+"""
+function addchart!(atlas::Atlas1D{T}, prob) where T
+    @noinline function jacobian(funcs, u0; data, prob)
+        # TODO: sort out the jacobian calculation...
+        ForwardDiff.jacobian((res, u) -> funcs(res, u, data=data, prob=prob), similar(u0), u0)
+    end
+    chart = atlas.current_chart[]
+    @assert (chart.status === :corrected) "Chart has not been corrected before adding"
+    if chart.pt >= atlas.options.max_steps[1] # TODO: fix this! Start with just doing a continuation in one direction
+        chart.pt_type = :EP
+        chart.ep_flag = true
+    end
+    # Update the tangent vector
+    dfdu = jacobian(atlas.funcs[:embedded], chart.u, data=chart.data, prob=prob)
+    dfdp = zeros(T, length(chart.u))
+    dfdp[get_indices(atlas.funcs, get_mfunc_func(atlas.mfuncs, atlas.projection_idx))] .= one(T)
+    chart.TS .= dfdu \ dfdp
+    chart.t .= chart.s.*chart.TS./norm(chart.TS)
+    opt = atlas.options
+    # Check the angle
+    if !isempty(atlas.currentcurve)
+        chart0 = atlas.currentcurve[end]
+        β = acos(clamp(dot(chart.t, chart0.t), -1, 1))
+        if β > opt.αmax*opt.stepincrease
+            # Angle is too large, attempt to adjust step size
+            if chart0.R > opt.stepmin
+                chart.status = :rejected
+                chart0.R = clamp(chart0.R*opt.stepdecrease, opt.stepmin, opt.stepmax)
+                nextstate[] =  predict!
+                return
+            else
+                @warn "Minimum step size reached but angle constraints not met" chart
+            end
+        end
+        if opt.stepincrease^2*β < opt.αmax
+            mult = opt.stepincrease
+        else
+            mult = clamp(opt.αmax / (sqrt(opt.stepincrease)*β), opt.stepdecrease, opt.stepincrease)
+        end
+        chart.R = clamp(opt.ga*mult*chart.R, opt.stepmin, opt.stepmax)
+    end
+    # Update non-embedded functions
+    evaluate_nonembedded!(chart.uc, zp, chart.u, prob, chart.data_nonembed)
+    # Store
+    push!(atlas.currentcurve, chart)
+    nextstate[] =  flush!
+    return
+end
+
+"""
+    refine!(atlas, prob)
+
+Update the continuation strategy to attempt to progress the continuation after
+a failed correction step.
+
+# Outline
+
+1. If the step size is greater than the minimum, reduce the step size to the
+   larger of the minimum step size and the current step size multiplied by the
+   step decrease factor.
+
+# Next state
+
+* [`SimpleCoverings.predict!`](@ref) if the continuation strategy was updated,
+  otherwise
+* [`SimpleCoverings.flush!`](@ref).
+"""
+function refine!(atlas::Atlas1D, prob)
+    if isempty(atlas.currentcurve)
+        nextstate[] = flush!
+    else
+        chart = first(atlas.currentcurve)
+        if chart.R > atlas.options.stepmin
+            chart.R = max(chart.R*atlas.options.stepdecrease, atlas.options.stepmin)
+            nextstate[] = predict!
+        else
+            nextstate[] = flush!
+        end
+    end
+end
+
+"""
+    flush!(atlas, prob)
+
+Given a representation of a curve in the form of a list of charts, add all
+corrected charts to the atlas, and update the current curve.
+
+# Outline
+
+1. Add all corrected charts to the atlas.
+2. If charts were added to the atlas, set the current curve to be a single
+   chart at the boundary of the atlas.
+   
+# Next state
+
+* [`SimpleCoverings.predict!`](@ref) if charts were added to the atlas, otherwise
+* `nothing` to terminate the state machine.
+"""
+function flush!(atlas::Atlas1D, prob)
+    added = false
+    ep_flag = false
+    for chart in atlas.currentcurve
+        # Flush any corrected points
+        # TODO: check for end points?
+        if chart.status === :corrected
+            chart.status = :flushed
+            push!(atlas.charts, chart)
+            added = true
+            ep_flag |= chart.ep_flag
+        end
+    end
+    if added
+        # Set the new base point to be the last point flushed
+        resize!(atlas.currentcurve, 1)
+        atlas.currentcurve[1] = last(atlas.charts)
+        if ep_flag
+            nextstate[] = nothing
+        else
+            nextstate[] = predict!
+        end
+    else
+        # Nothing was added so the continuation failed
+        # TODO: indicate the type of failure?
+        nextstate[] = nothing
+    end
+    return
+end
+
+"""
+    predict!(atlas, prob)
+
+Make a deep copy of the (single) chart in the current curve and generate a
+prediction for the next chart along the curve.
+
+# Outline
+
+1. `deepcopy` the chart in the current curve.
+2. Generate a predicted value for the solution.
+3. Set the current chart equal to the predicted value.
+4. Update the projection condition with the new prediction and tangent vector.
+
+# Next state
+
+* [`SimpleCoverings.correct!`](@ref).
+"""
+function predict!(atlas::Atlas1D, prob)
+    @assert length(atlas.currentcurve) == 1 "Multiple charts in atlas.currentcurve"
+    # Copy the existing chart along with toolbox data
+    predicted = deepcopy(first(atlas.currentcurve))
+    # Predict
+    predicted.pt += 1
+    predicted.u .+= predicted.R*predicted.TS*predicted.s
+    predicted.status = :predicted
+    atlas.current_chart = predicted
+    # Update the projection condition
+    update_prcond!(atlas.prcond, predicted)
+    nextstate[] = correct!
+    return
+end
+
+#--- SimpleCovering
+
+struct SimpleCovering{NDIM, P} end
+
+# TODO: include a zero dimensional version
+
+function NumericalContinuation.initialize!(::Type{SimpleCovering{1, P}}, prob) where P
+    return Atlas1D(prob, P)
+end
 
 
 end # module

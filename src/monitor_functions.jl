@@ -125,3 +125,5 @@ function Base.show(io::IO, mime::MIME"text/plain", mfuncs::MonitorFunctions)
 end
 
 get_mfunc_value(mfunc::MonitorFunctions, midx::Integer, data) = data[mfunc.didx][midx]
+get_mfunc_var(mfunc::MonitorFunctions, midx::Integer) = mfunc.muidx[midx]
+get_mfunc_func(mfunc::MonitorFunctions, midx::Integer) = mfunc.fidx[midx]
