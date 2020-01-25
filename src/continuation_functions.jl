@@ -1,3 +1,5 @@
+# TODO: need a way of closing the functions when initialisation is done
+
 #--- Continuation variables
 
 struct Vars

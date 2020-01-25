@@ -5,8 +5,9 @@ using LinearAlgebra: norm, dot
 using ..NumericalContinuation: NumericalContinuation
 using ..NumericalContinuation: Vars, Functions
 using ..NumericalContinuation: get_numtype, get_vars, get_data, get_funcs,
-    get_options, add_data!, add_mfunc!, add_projection!, update_projection!,
-    get_dim, get_initial_u, get_initial_t, get_initial_data, update_data!
+    get_mfuncs, get_options, add_data!, add_mfunc!, add_projection!,
+    update_projection!, get_dim, get_initial_u, get_initial_t, get_initial_data,
+    update_data!, initialize!, get_mfunc_func, get_indices
 
 using NLsolve: NLsolve
 using ForwardDiff: ForwardDiff
@@ -131,6 +132,7 @@ function Atlas1D(prob, projection)
     # Options
     options = Atlas1DOptions(prob)
     # Initial chart data
+    initialize!(prob)
     u0 = get_initial_u(T, vars)
     t0 = get_initial_t(T, vars)  # assumption is that the active continuation variable has a non-zero value for t
     data = get_initial_data(get_data(prob))
@@ -222,7 +224,6 @@ function correct!(atlas::Atlas1D, prob)
     chart = atlas.current_chart[]
     # Set up the projection condition
     update_projection!(atlas.projection, chart.u, chart.TS, data=chart.data, prob=prob)
-    @infiltrate
     # Solve zero problem
     sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, prob=prob)
     if NLsolve.converged(sol)
@@ -264,6 +265,7 @@ function add_chart!(atlas::Atlas1D, prob)
         # TODO: sort out the jacobian calculation...
         ForwardDiff.jacobian((res, u) -> funcs(res, u, data=data, prob=prob), similar(u0), u0)
     end
+    T = get_numtype(prob)
     chart = atlas.current_chart[]
     @assert (chart.status === :corrected) "Chart has not been corrected before adding"
     if chart.pt >= atlas.options.max_steps[1] # TODO: fix this! Start with just doing a continuation in one direction
@@ -273,7 +275,7 @@ function add_chart!(atlas::Atlas1D, prob)
     # Update the tangent vector
     dfdu = jacobian(atlas.funcs[:embedded], chart.u, data=chart.data, prob=prob)
     dfdp = zeros(T, length(chart.u))
-    dfdp[get_indices(atlas.funcs, get_mfunc_func(atlas.mfuncs, atlas.projection_idx))] .= 1
+    dfdp[get_indices(atlas.funcs, get_mfunc_func(get_mfuncs(prob), atlas.projection_idx))] .= 1
     chart.TS .= dfdu \ dfdp
     chart.t .= chart.s.*chart.TS./norm(chart.TS)
     opt = atlas.options
