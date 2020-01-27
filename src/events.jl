@@ -83,9 +83,9 @@ function initialize!(events::Events, prob)
     return events
 end
 
-function update_data!(events::Events, u; data, prob)
+function update_data!(events::Events, u; data, atlas)
     if !isempty(data[events.didx])
-        events.funcs[:events](data[events.didx], u, data=data, prob=prob)
+        events.funcs[:events](data[events.didx], u, data=data, atlas=atlas)
     end
     return
 end

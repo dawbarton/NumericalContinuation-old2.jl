@@ -6,7 +6,7 @@
     out = zeros(Float64, 2)
     u0 = NC.get_initial_u(Float64, NC.get_vars(prob))
     d0 = NC.get_initial_data(NC.get_data(prob))
-    func(out, u0, data=d0, prob=prob)
+    func(out, u0, data=d0, atlas=prob)
     @test out ≈ [1.5^3-1, 0]
     @test NC.has_var(NC.get_vars(prob), "λ")
 
@@ -18,6 +18,6 @@
     out = zeros(Float64, 4)
     u0 = NC.get_initial_u(Float64, NC.get_vars(prob))
     d0 = NC.get_initial_data(NC.get_data(prob))
-    func(out, u0, data=d0, prob=prob)
+    func(out, u0, data=d0, atlas=prob)
     @test out ≈ [1.5^3-1, 1.5*2-2, 0, 0]
 end

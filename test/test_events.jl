@@ -39,15 +39,15 @@
 
     u0 = NC.get_initial_u(Float64, vars)
     d0 = NC.get_initial_data(data)
-    NC.update_data!(mfuncs, u0, data=d0, prob=nothing)
-    NC.update_data!(events, u0, data=d0, prob=nothing)
+    NC.update_data!(mfuncs, u0, data=d0, atlas=nothing)
+    NC.update_data!(events, u0, data=d0, atlas=nothing)
     ev0 = NC.check_events(events, d0, d0)
     @test isempty(ev0)
 
     u1 = u0 .+ 1
     d1 = deepcopy(d0)
-    NC.update_data!(mfuncs, u1, data=d1, prob=nothing)
-    NC.update_data!(events, u1, data=d1, prob=nothing)
+    NC.update_data!(mfuncs, u1, data=d1, atlas=nothing)
+    NC.update_data!(events, u1, data=d1, atlas=nothing)
     ev1 = NC.check_events(events, d0, d1)
     @test length(ev1) == 3
     @test (1=>1.5) in ev1
@@ -56,8 +56,8 @@
 
     u2 = u0 .+ 3
     d2 = deepcopy(d0)
-    NC.update_data!(mfuncs, u2, data=d2, prob=nothing)
-    NC.update_data!(events, u2, data=d2, prob=nothing)
+    NC.update_data!(mfuncs, u2, data=d2, atlas=nothing)
+    NC.update_data!(events, u2, data=d2, atlas=nothing)
     ev2 = NC.check_events(events, d0, d2)
     @test length(ev2) == 5
     @test (1=>1.5) in ev2

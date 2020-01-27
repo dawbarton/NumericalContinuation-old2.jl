@@ -1,7 +1,5 @@
 module NumericalContinuation
 
-using Infiltrator
-
 include("default_options.jl")
 
 include("options.jl")

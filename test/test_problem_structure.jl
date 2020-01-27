@@ -34,18 +34,18 @@
     NC.initialize!(prob)
     u0 = NC.get_initial_u(T, vars)
     d0 = NC.get_initial_data(data)
-    NC.update_data!(prob, u0, data=d0)
+    NC.update_data!(prob, u0, data=d0, atlas=prob)
     u1 = u0 .+ 1
     u1[end] = sum(u1[1:10].^2)  # manually fix up the monitor function rather than using a nonlinear solve
     d1 = deepcopy(d0)
-    NC.update_data!(prob, u1, data=d1)
+    NC.update_data!(prob, u1, data=d1, atlas=prob)
     @test length(NC.check_events(prob, d0, d1)) == 1
 
     NC.emit_signal(prob, :random_signal1, u0, data=d0, prob=prob)
     @test _slot[] == 1
     embedded = NC.get_func(prob, :embedded)
     out = zeros(T, NC.get_dim(funcs, :embedded))
-    embedded(out, u0, data=d0, prob=prob)
+    embedded(out, u0, data=d0, atlas=prob)
     @test out == [sum(1:10) - d0[data["MyData"]], 0.0]
 
     NC.add_pars!(prob, ["p$i" for i in 1:10], "MyVar")

@@ -166,7 +166,7 @@ struct Functions
     funcs::Vector{Any}
     vardeps::Vector{Vector{Int64}}
     datadeps::Vector{Vector{Pair{Symbol, Int64}}}
-    probdep::Vector{Bool}
+    atlasdep::Vector{Bool}
     memberof::Vector{Vector{Symbol}}
     groups::Dict{Symbol, Vector{Int64}}
     group_func::Dict{Symbol, Any}
@@ -182,7 +182,7 @@ get_dim(funcs::Functions, fidx::Int64) = funcs.dims[fidx]
 get_func(funcs::Functions, fidx::Int64) = funcs.funcs[fidx]
 get_vardeps(funcs::Functions, fidx::Int64) = funcs.vardeps[fidx]
 get_datadeps(funcs::Functions, fidx::Int64) = funcs.datadeps[fidx]
-get_probdep(funcs::Functions, fidx::Int64) = funcs.probdep[fidx]
+get_atlasdep(funcs::Functions, fidx::Int64) = funcs.atlasdep[fidx]
 get_groups(funcs::Functions, fidx::Int64) = funcs.memberof[fidx]
 Base.nameof(funcs::Functions, fidx::Int64) = get_name(funcs, fidx)
 Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
@@ -228,8 +228,8 @@ function set_datadeps!(funcs::Functions, fidx::Int64, data::Vector{Pair{Symbol, 
     return funcs
 end
 
-function set_probdep!(funcs::Functions, fidx::Int64, prob::Bool)
-    funcs.probdep[fidx] = prob
+function set_atlasdep!(funcs::Functions, fidx::Int64, atlas::Bool)
+    funcs.atlasdep[fidx] = atlas
     _invalidate_groups(funcs, fidx)
     return funcs
 end
@@ -274,7 +274,7 @@ _convert_memberof(memberof::Vector{Symbol}) = memberof
 _convert_memberof(memberof::Symbol) = [memberof]
 _convert_memberof(memberof::Union{Nothing, Tuple{}}) = Symbol[]
 
-function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, memberof=:embedded; data=Pair{Symbol, Int64}[], prob::Bool=false)
+function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, memberof=:embedded; data=Pair{Symbol, Int64}[], atlas::Bool=false)
     if has_func(funcs, name)
         throw(ArgumentError("Continuation function already exists: $name"))
     end
@@ -287,7 +287,7 @@ function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, mem
     push!(funcs.funcs, func)
     push!(funcs.vardeps, _vars)
     push!(funcs.datadeps, _data)
-    push!(funcs.probdep, prob)
+    push!(funcs.atlasdep, atlas)
     push!(funcs.memberof, _memberof)
     fidx = funcs.lookup[name] = length(funcs.names)
     for grp in _memberof
@@ -327,21 +327,21 @@ function get_func(funcs::Functions, name::Symbol)
     end
 end
 
-function eval_func!(output, funcs::Functions, fidx::Vector{Int64}, u; prob, data)
+function eval_func!(output, funcs::Functions, fidx::Vector{Int64}, u; atlas, data)
     next = 1
     for fi in fidx  
         kwargs = [name=>data[idx] for (name, idx) in funcs.datadeps[fi]]
         funcs.funcs[fi](view(output, next:next+funcs.dims[fi]-1), 
             (view(u, get_indices(funcs.vars, ui)) for ui in funcs.vardeps[fi])...;
             (name=>data[idx] for (name, idx) in funcs.datadeps[fi])...,
-            (if funcs.probdep[fi]; (:prob=>prob,) else () end)...)
+            (if funcs.atlasdep[fi]; (:atlas=>atlas,) else () end)...)
         next = next + funcs.dims[fi]
     end
     return output
 end
 
 function generate_func(funcs::Functions, fidx::Vector{Int64})
-    func = :(function (output, funcs, u; prob, data) vars = funcs.vars end)
+    func = :(function (output, funcs, u; atlas, data) vars = funcs.vars end)
     func_body = func.args[2]
     # Get all dependent continuation variables
     vidx = unique(reduce(vcat, funcs.vardeps[fidx]))
@@ -358,8 +358,8 @@ function generate_func(funcs::Functions, fidx::Vector{Int64})
         for vi in funcs.vardeps[fi]
             push!(func_call.args, vdict[vi])
         end
-        if funcs.probdep[fi]
-            push!(func_call.args, Expr(:kw, :prob, :prob))
+        if funcs.atlasdep[fi]
+            push!(func_call.args, Expr(:kw, :atlas, :atlas))
         end
         for (dname, di) in funcs.datadeps[fi]
             push!(func_call.args, Expr(:kw, dname, :(data[$di])))
@@ -374,7 +374,7 @@ end
 function generate_func!(funcs::Functions, name::Symbol)
     let funcs = funcs
         grpfunc = eval(generate_func(funcs, funcs.groups[name]))
-        return funcs.group_func[name] = (output, u; prob, data) -> grpfunc(output, funcs, u, prob=prob, data=data)
+        return funcs.group_func[name] = (output, u; atlas, data) -> grpfunc(output, funcs, u, atlas=atlas, data=data)
     end
 end
 

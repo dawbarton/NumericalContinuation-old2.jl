@@ -32,7 +32,7 @@ Base.nameof(mfunc::MonitorFunctions, idx::Integer) = mfunc.names[idx]
 has_mfunc(mfunc::MonitorFunctions, name::String) = haskey(mfunc.lookup, name)
 has_mfunc(mfunc::MonitorFunctions, idx::Integer) = (idx > 0) && (idx <= length(mfunc))
 
-function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), prob=false, active::Bool=true, initial_value=nothing)
+function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), atlas=false, active::Bool=true, initial_value=nothing)
     if has_mfunc(mfunc, name)
         throw(ArgumentError("Monitor function already exists: $name"))
     end
@@ -40,7 +40,7 @@ function add_mfunc!(mfunc::MonitorFunctions, name::String, func, vars; data=(), 
         throw(ArgumentError("Continuation variable already exists: $name"))
     end
     midx = length(mfunc.names)+1
-    fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), vars, [:embedded, :mfunc], data=data, prob=prob)
+    fidx = add_func!(mfunc.funcs, name, 1, MonitorFunctionWrapper(midx, func), vars, [:embedded, :mfunc], data=data, atlas=atlas)
     # Do things in this order to ensure that user errors (e.g., with vars) bail out before corrupting internal structures
     muidx = add_var!(mfunc.funcs, name, active ? 1 : 0, u0=(initial_value isa Number ? [initial_value] : initial_value))
     set_vardeps!(mfunc.funcs, fidx, pushfirst!(get_vardeps(mfunc.funcs, fidx), muidx))
@@ -87,7 +87,7 @@ function initialize!(mfunc::MonitorFunctions, prob)
     for i in eachindex(mfunc.muidx)
         mu = get_initial_u(vars, mfunc.muidx[i])
         if mu === nothing
-            eval_func!(output, mfunc.funcs, [mfunc.fidx[i]], get_initial_u(T, vars), data=get_initial_data(data), prob=prob)
+            eval_func!(output, mfunc.funcs, [mfunc.fidx[i]], get_initial_u(T, vars), data=get_initial_data(data), atlas=prob)
             set_initial_u!(vars, mfunc.muidx[i], [output[1]])
             mfunc_data[i] = output[1]
         else
@@ -97,7 +97,7 @@ function initialize!(mfunc::MonitorFunctions, prob)
     return mfunc
 end
 
-function update_data!(mfunc::MonitorFunctions, u; data, prob=nothing)
+function update_data!(mfunc::MonitorFunctions, u; data, atlas=nothing)
     vars = get_vars(mfunc.funcs)
     mfunc_data = data[mfunc.didx]
     for i in eachindex(mfunc.muidx)

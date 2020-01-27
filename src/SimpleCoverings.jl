@@ -12,8 +12,6 @@ using ..NumericalContinuation: get_numtype, get_vars, get_data, get_funcs,
 using NLsolve: NLsolve
 using ForwardDiff: ForwardDiff
 
-using Infiltrator
-
 # TODO: u indices change when mfuncs are active/inactive - how is that dealt
 # with during covering? Might need to adjust the setactive function to update
 # u & TS at the same time.
@@ -46,7 +44,7 @@ function NumericalContinuation.add_projection!(prob, ::Type{PseudoArclength})
     return (pseudo, midx)
 end
 
-function NumericalContinuation.update_projection!(pseudo::PseudoArclength, u, TS; data, prob)
+function NumericalContinuation.update_projection!(pseudo::PseudoArclength, u, TS; data, atlas)
     d = data[pseudo.didx]
     if length(d.u) != length(u)
         resize!(d.u, length(u))
@@ -230,15 +228,15 @@ condition as previously specified.
 function correct!(atlas::Atlas1D)
     # Function barrier
     # TODO: turn this into a structure rather than a closure and use the OnceDifferentiable wrapper to set up caching?
-    @noinline function solve!(funcs, u0; data, prob)
-        NLsolve.nlsolve((res, u) -> funcs(res, u, data=data, prob=prob), u0)
+    @noinline function solve!(funcs, u0; data, atlas)
+        NLsolve.nlsolve((res, u) -> funcs(res, u, data=data, atlas=atlas), u0)
     end
     # Current chart
     chart = atlas.current_chart[]
     # Set up the projection condition
-    update_projection!(atlas.projection, chart.u, chart.TS, data=chart.data, prob=atlas.prob)
+    update_projection!(atlas.projection, chart.u, chart.TS, data=chart.data, atlas=atlas)
     # Solve zero problem
-    sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, prob=atlas.prob)
+    sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, atlas=atlas)
     if NLsolve.converged(sol)
         chart.u .= sol.zero
         chart.status = :corrected
@@ -274,9 +272,9 @@ update any calculated properties (e.g., tangent vector).
 2. Locate events.
 """
 function add_chart!(atlas::Atlas1D)
-    @noinline function jacobian(funcs, u0; data, prob)
+    @noinline function jacobian(funcs, u0; data, atlas)
         # TODO: sort out the jacobian calculation...
-        ForwardDiff.jacobian((res, u) -> funcs(res, u, data=data, prob=prob), similar(u0), u0)
+        ForwardDiff.jacobian((res, u) -> funcs(res, u, data=data, atlas=atlas), similar(u0), u0)
     end
     T = get_numtype(atlas)
     chart = atlas.current_chart[]
@@ -286,7 +284,7 @@ function add_chart!(atlas::Atlas1D)
         chart.ep_flag = true
     end
     # Update the tangent vector
-    dfdu = jacobian(atlas.funcs[:embedded], chart.u, data=chart.data, prob=atlas.prob)
+    dfdu = jacobian(atlas.funcs[:embedded], chart.u, data=chart.data, atlas=atlas)
     dfdp = zeros(T, length(chart.u))
     dfdp[end] = 1  # TODO: fix this! should get the indices associated with the projection condition
     chart.TS .= dfdu \ dfdp
@@ -314,7 +312,7 @@ function add_chart!(atlas::Atlas1D)
         chart.R = clamp(opt.ga*mult*chart.R, opt.step_min, opt.step_max)
     end
     # Update data
-    update_data!(atlas.prob, chart.u, data=chart.data)
+    update_data!(atlas.prob, chart.u, data=chart.data, atlas=atlas)
     # Store
     push!(atlas.current_curve, chart)
     return flush!

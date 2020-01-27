@@ -56,6 +56,7 @@ end
 
 #--- Accessors
 
+get_prob(prob::ProblemStructure) = prob
 get_options(prob::ProblemStructure) = prob.options
 get_signals(prob::ProblemStructure) = prob.signals
 get_vars(prob::ProblemStructure) = prob.vars
@@ -99,10 +100,10 @@ end
 
 #--- Updating
 
-function update_data!(prob::ProblemStructure, u; data)
-    update_data!(prob.mfuncs, u, data=data, prob=prob)
-    update_data!(prob.events, u, data=data, prob=prob)
-    emit_signal(prob, :update_data, u, data=data, prob=prob)
+function update_data!(prob::ProblemStructure, u; data, atlas)
+    update_data!(prob.mfuncs, u, data=data, atlas=atlas)
+    update_data!(prob.events, u, data=data, atlas=atlas)
+    emit_signal(prob, :update_data, u, data=data, atlas=atlas)
     return
 end
 
