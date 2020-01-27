@@ -63,6 +63,7 @@ set_initial_t!(vars::Vars, vidx::Int64, t0) = vars.t0[vidx] = t0
 
 # Functions operating on the collection of variables
 
+Base.iterate(vars::Vars, args...) = iterate(vars.names, args...)
 get_dim(vars::Vars) = vars.indices[end].stop
 Base.length(vars::Vars) = length(vars.names)
 
@@ -138,6 +139,7 @@ Base.getindex(data::Data, name::String) = data.lookup[name]
 
 # Functions operating on the collection of continuation data
 
+Base.iterate(data::Data, args...) = iterate(data.names, args...)
 get_initial_data(data::Data) = (data.data...,)
 has_data(data::Data, name::String) = haskey(data.lookup, name)
 has_data(data::Data, idx::Integer) = (idx > 0) && (idx <= length(data))
@@ -301,6 +303,7 @@ end
 
 # Functions operating on the collection of functions
 
+Base.iterate(funcs::Functions, args...) = iterate(funcs.names, args...)
 get_dim(funcs::Functions, group::Symbol) = sum(funcs.dims[funcs.groups[group]])
 get_groups(funcs::Functions) = keys(funcs.groups)
 get_vars(funcs::Functions) = funcs.vars

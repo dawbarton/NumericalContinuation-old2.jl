@@ -143,5 +143,5 @@ end
 function continuation!(prob::ProblemStructure, args...; dim=1, covering=SimpleCoverings.covering)
     set_domain!(prob, args...)
     atlas = covering(prob, dim=dim)
-    return Base.invokelatest(cover!, atlas, prob)
+    return Base.invokelatest(cover!, atlas)
 end

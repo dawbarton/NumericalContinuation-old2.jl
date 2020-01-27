@@ -3,7 +3,7 @@ module SimpleCoverings
 using Base: RefValue, @kwdef
 using LinearAlgebra: norm, dot
 using ..NumericalContinuation: NumericalContinuation
-using ..NumericalContinuation: Vars, Functions
+using ..NumericalContinuation: ProblemStructure, Vars, Functions
 using ..NumericalContinuation: get_numtype, get_vars, get_data, get_funcs,
     get_mfuncs, get_options, add_data!, add_mfunc!, add_projection!,
     update_projection!, get_dim, get_initial_u, get_initial_t, get_initial_data,
@@ -72,6 +72,12 @@ end
     data::D 
 end
 
+NumericalContinuation.get_chart_label(chart::Chart) = chart.pt
+NumericalContinuation.get_chart_type(chart::Chart) = chart.pt_type
+NumericalContinuation.get_chart_u(chart::Chart) = chart.u
+NumericalContinuation.get_chart_t(chart::Chart) = chart.t
+NumericalContinuation.get_chart_data(chart::Chart) = chart.data
+
 #--- Atlas1DOptions - continuation options
 
 struct Atlas1DOptions{T <: Number}
@@ -107,6 +113,7 @@ end
 #--- Atlas1D
 
 struct Atlas1D{T, D, J}
+    prob::ProblemStructure{T}
     vars::Vars
     funcs::Functions
     projection::J
@@ -131,8 +138,9 @@ function Atlas1D(prob, projection)
     (projection, projection_idx) = add_projection!(prob, projection)
     # Options
     options = Atlas1DOptions(prob)
-    # Initial chart data
+    # Initialise the problem structure (must be done after adding all the required functions but before getting chart data)
     initialize!(prob)
+    # Initial chart data
     u0 = get_initial_u(T, vars)
     t0 = get_initial_t(T, vars)  # assumption is that the active continuation variable has a non-zero value for t
     data = get_initial_data(get_data(prob))
@@ -143,9 +151,14 @@ function Atlas1D(prob, projection)
     D = typeof(data)
     C = typeof(current_chart)
     J = typeof(projection)
-    return Atlas1D{T, D, J}(vars, funcs, projection, projection_idx, 
+    return Atlas1D{T, D, J}(prob, vars, funcs, projection, projection_idx, 
         Ref(current_chart), C[], C[], options)
 end
+
+NumericalContinuation.get_prob(atlas::Atlas1D) = atlas.prob
+NumericalContinuation.get_charts(atlas::Atlas1D) = atlas.charts
+NumericalContinuation.get_current_chart(atlas::Atlas1D) = atlas.current_chart[]
+NumericalContinuation.get_numtype(atlas::Atlas1D{T}) where T = T
 
 #--- Covering
 
@@ -160,11 +173,11 @@ end
 
 #--- State machine
 
-function NumericalContinuation.cover!(atlas::Atlas1D, prob)
+function NumericalContinuation.cover!(atlas::Atlas1D)
     state::Any = init_covering!
     while state !== nothing
-        state = state(atlas, prob)
-        println(nameof(state))
+        state = state(atlas)
+        # println(nameof(state))
     end 
     return atlas
 end
@@ -172,7 +185,7 @@ end
 #--- States of the state machine
 
 """
-    init_covering!(atlas, prob)
+    init_covering!(atlas)
 
 # Outline
 
@@ -185,7 +198,7 @@ end
 * [`Coverings.add_chart!`](@ref) if chart status is `:corrected`,
 * otherwise error.
 """
-function init_covering!(atlas::Atlas1D, prob)
+function init_covering!(atlas::Atlas1D)
     # Choose the next state
     if atlas.current_chart[].status === :predicted
         return correct!
@@ -197,7 +210,7 @@ function init_covering!(atlas::Atlas1D, prob)
 end
 
 """
-    correct!(atlas, prob)
+    correct!(atlas)
 
 Correct the (predicted) solution in the current chart with the projection
 condition as previously specified.
@@ -214,7 +227,7 @@ condition as previously specified.
 * [`SimpleCoverings.add_chart!`](@ref) if the chart status is `:corrected`; otherwise
 * [`SimpleCoverings.refine!`](@ref).
 """
-function correct!(atlas::Atlas1D, prob)
+function correct!(atlas::Atlas1D)
     # Function barrier
     # TODO: turn this into a structure rather than a closure and use the OnceDifferentiable wrapper to set up caching?
     @noinline function solve!(funcs, u0; data, prob)
@@ -223,9 +236,9 @@ function correct!(atlas::Atlas1D, prob)
     # Current chart
     chart = atlas.current_chart[]
     # Set up the projection condition
-    update_projection!(atlas.projection, chart.u, chart.TS, data=chart.data, prob=prob)
+    update_projection!(atlas.projection, chart.u, chart.TS, data=chart.data, prob=atlas.prob)
     # Solve zero problem
-    sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, prob=prob)
+    sol = solve!(atlas.funcs[:embedded], chart.u, data=chart.data, prob=atlas.prob)
     if NLsolve.converged(sol)
         chart.u .= sol.zero
         chart.status = :corrected
@@ -237,7 +250,7 @@ function correct!(atlas::Atlas1D, prob)
 end
 
 """
-    add_chart!(atlas, prob)
+    add_chart!(atlas)
 
 Add a corrected chart to the list of charts that defines the current curve and
 update any calculated properties (e.g., tangent vector).
@@ -260,12 +273,12 @@ update any calculated properties (e.g., tangent vector).
 1. Update monitor functions.
 2. Locate events.
 """
-function add_chart!(atlas::Atlas1D, prob)
+function add_chart!(atlas::Atlas1D)
     @noinline function jacobian(funcs, u0; data, prob)
         # TODO: sort out the jacobian calculation...
         ForwardDiff.jacobian((res, u) -> funcs(res, u, data=data, prob=prob), similar(u0), u0)
     end
-    T = get_numtype(prob)
+    T = get_numtype(atlas)
     chart = atlas.current_chart[]
     @assert (chart.status === :corrected) "Chart has not been corrected before adding"
     if chart.pt >= atlas.options.max_steps[1] # TODO: fix this! Start with just doing a continuation in one direction
@@ -273,9 +286,9 @@ function add_chart!(atlas::Atlas1D, prob)
         chart.ep_flag = true
     end
     # Update the tangent vector
-    dfdu = jacobian(atlas.funcs[:embedded], chart.u, data=chart.data, prob=prob)
+    dfdu = jacobian(atlas.funcs[:embedded], chart.u, data=chart.data, prob=atlas.prob)
     dfdp = zeros(T, length(chart.u))
-    dfdp[get_indices(atlas.funcs, get_mfunc_func(get_mfuncs(prob), atlas.projection_idx))] .= 1
+    dfdp[end] = 1  # TODO: fix this! should get the indices associated with the projection condition
     chart.TS .= dfdu \ dfdp
     chart.t .= chart.s.*chart.TS./norm(chart.TS)
     opt = atlas.options
@@ -301,14 +314,14 @@ function add_chart!(atlas::Atlas1D, prob)
         chart.R = clamp(opt.ga*mult*chart.R, opt.step_min, opt.step_max)
     end
     # Update data
-    update_data!(prob, chart.u, data=chart.data)
+    update_data!(atlas.prob, chart.u, data=chart.data)
     # Store
     push!(atlas.current_curve, chart)
     return flush!
 end
 
 """
-    refine!(atlas, prob)
+    refine!(atlas)
 
 Update the continuation strategy to attempt to progress the continuation after
 a failed correction step.
@@ -325,7 +338,7 @@ a failed correction step.
   otherwise
 * [`SimpleCoverings.flush!`](@ref).
 """
-function refine!(atlas::Atlas1D, prob)
+function refine!(atlas::Atlas1D)
     if isempty(atlas.current_curve)
         return flush!
     else
@@ -340,7 +353,7 @@ function refine!(atlas::Atlas1D, prob)
 end
 
 """
-    flush!(atlas, prob)
+    flush!(atlas)
 
 Given a representation of a curve in the form of a list of charts, add all
 corrected charts to the atlas, and update the current curve.
@@ -356,7 +369,7 @@ corrected charts to the atlas, and update the current curve.
 * [`SimpleCoverings.predict!`](@ref) if charts were added to the atlas, otherwise
 * `nothing` to terminate the state machine.
 """
-function flush!(atlas::Atlas1D, prob)
+function flush!(atlas::Atlas1D)
     added = false
     ep_flag = false
     for chart in atlas.current_curve
@@ -389,7 +402,7 @@ function flush!(atlas::Atlas1D, prob)
 end
 
 """
-    predict!(atlas, prob)
+    predict!(atlas)
 
 Make a deep copy of the (single) chart in the current curve and generate a
 prediction for the next chart along the curve.
@@ -405,7 +418,7 @@ prediction for the next chart along the curve.
 
 * [`SimpleCoverings.correct!`](@ref).
 """
-function predict!(atlas::Atlas1D, prob)
+function predict!(atlas::Atlas1D)
     @assert length(atlas.current_curve) == 1 "Multiple charts in atlas.current_curve"
     # Copy the existing chart along with toolbox data
     predicted = deepcopy(first(atlas.current_curve))

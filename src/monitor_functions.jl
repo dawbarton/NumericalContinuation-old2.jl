@@ -25,6 +25,7 @@ function MonitorFunctions(funcs::Functions)
     return MonitorFunctions(funcs, String[], Dict{String, Int64}(), didx, Int64[], Int64[])
 end
 
+Base.iterate(mfunc::MonitorFunctions, args...) = iterate(mfunc.names, args...)
 Base.length(mfunc::MonitorFunctions) = length(mfunc.names)
 Base.getindex(mfunc::MonitorFunctions, name::String) = mfunc.lookup[name]
 Base.nameof(mfunc::MonitorFunctions, idx::Integer) = mfunc.names[idx]
