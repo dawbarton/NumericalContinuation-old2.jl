@@ -90,19 +90,19 @@ end
     @test NC.get_vars(func) isa NC.Vars
     @test NC.get_data(func) isa NC.Data
     @test collect(NC.get_groups(func)) == [:embedded, :monitor]
-    @test_throws ArgumentError func[:random]
+    @test_throws KeyError func[:random]
     @test nameof(func, func["f1"]) == "f1"
     @test NC.get_dim(func, func["f2"]) == 2
     @test NC.get_func(func, func["f1"]) === f1
     @test NC.get_vardeps(func, func["f1a"]) == [v1, v2]
     @test NC.get_datadeps(func, func["f2"]) == [:dta=>d1]
     @test NC.get_atlasdep(func, func["f1"]) == false
-    @test NC.get_groups(func, func["f2"]) == [:embedded, :monitor]
+    @test NC.get_memberof(func, func["f2"]) == [:embedded, :monitor]
     NC.add_func_to_group(func, func["f2"], :monitor)
-    @test NC.get_groups(func, func["f2"]) == [:embedded, :monitor]
-    @test NC.get_groups(func, func["f1"]) == [:embedded]
+    @test NC.get_memberof(func, func["f2"]) == [:embedded, :monitor]
+    @test NC.get_memberof(func, func["f1"]) == [:embedded]
     NC.add_func_to_group(func, func["f1"], :monitor)
-    @test NC.get_groups(func, func["f1"]) == [:embedded, :monitor]
+    @test NC.get_memberof(func, func["f1"]) == [:embedded, :monitor]
     @test NC.has_func(func, "f1")
     @test NC.has_func(func, func["f1"])
     @test NC.has_group(func, :monitor)
@@ -114,45 +114,49 @@ end
     d = (8.5,)
     atlas = 3.25
     out = zeros(Float64, NC.get_dim(func, :embedded))
+    NC.close_group!(func, :embedded)
     func[:embedded](out, u, data=d, atlas=atlas)
     @test out == [u[1], sum(u[1:2])+d[1], u[2], sum(u[1:2])+d[1], u[1]+d[1], u[2]+d[1], u[1]+d[1], u[1]+d[1], sum(u[1:2])+atlas]
     out .= 0
-    NC.eval_func!(out, func, NC.get_funcs(func, :embedded), u, data=d, atlas=atlas)
+    NC.eval_func!(out, func, NC.get_group(func, :embedded), u, data=d, atlas=atlas)
     @test out == [u[1], sum(u[1:2])+d[1], u[2], sum(u[1:2])+d[1], u[1]+d[1], u[2]+d[1], u[1]+d[1], u[1]+d[1], sum(u[1:2])+atlas]
     g1 = (out, u1, u2) -> out[1] = u1[1]+u2[1]
     g2 = (out, u1; dta) -> out[1] = u1[1]+dta
     g3 = (out, u1; atlas) -> out[1] = u1[1]+atlas
     out2 = zeros(Float64, 1)
+
     func = NC.Functions()
     v1 = NC.add_var!(func, "v1", 1)
     v2 = NC.add_var!(func, "v2", 1)
     NC.add_func!(func, "func", 1, g1, "v1")
-    @test_throws MethodError func[:embedded](out2, u, data=nothing, atlas=nothing)
+    @test_throws MethodError NC.eval_func!(out2, func, NC.get_group(func, :embedded), u, data=nothing, atlas=nothing)
     NC.set_vardeps!(func, func["func"], [v1, v2])
-    func[:embedded](out2, u, data=nothing, atlas=nothing)
+    NC.eval_func!(out2, func, NC.get_group(func, :embedded), u, data=nothing, atlas=nothing)
     @test out2 == [u[1]+u[2]]
+
     func = NC.Functions()
     v1 = NC.add_var!(func, "v1", 1)
     d1 = NC.add_data!(func, "d1")
     NC.add_func!(func, "func", 1, g2, "v1")
-    @test_throws UndefKeywordError func[:embedded](out2, u, data=d, atlas=nothing)
+    @test_throws UndefKeywordError NC.eval_func!(out2, func, NC.get_group(func, :embedded), u, data=d, atlas=nothing)
     NC.set_datadeps!(func, func["func"], [:dta=>d1])
-    func[:embedded](out2, u, data=d, atlas=nothing)
+    NC.eval_func!(out2, func, NC.get_group(func, :embedded), u, data=d, atlas=nothing)
     @test out2 == [u[1]+d[1]]
     io = IOBuffer()
     show(io, MIME("text/plain"), func)
     @test !isempty(take!(io))    
+
     func = NC.Functions()
     v1 = NC.add_var!(func, "v1", 1)
     NC.add_func!(func, "func", 1, g3, "v1", atlas=false)
-    @test_throws UndefKeywordError func[:embedded](out2, u, data=nothing, atlas=atlas)
+    @test_throws UndefKeywordError NC.eval_func!(out2, func, NC.get_group(func, :embedded), u, data=nothing, atlas=atlas)
     NC.set_atlasdep!(func, func["func"], true)
-    fun = func[:embedded]
-    fun(out2, u, data=nothing, atlas=atlas)
+    NC.eval_func!(out2, func, NC.get_group(func, :embedded), u, data=nothing, atlas=atlas)
     @test out2 == [u[1]+atlas]
-    @test func[:embedded] == fun  # test caching
-    @test_throws ArgumentError func[:test]
+
+    @test_throws KeyError func[:test]
     NC.add_func_to_group(func, func["func"], :test)
+    NC.close_group!(func, :test)
     out2 .= 0
     func[:test](out2, u, data=nothing, atlas=atlas)
     @test out2 == [u[1]+atlas]

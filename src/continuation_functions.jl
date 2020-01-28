@@ -21,6 +21,7 @@ get_indices(vars::Vars, vidx::Int64) = vars.indices[vidx]
 get_initial_u(vars::Vars, vidx::Int64) = vars.u0[vidx]
 get_initial_t(vars::Vars, vidx::Int64) = vars.t0[vidx]
 Base.nameof(vars::Vars, vidx::Int64) = get_name(vars, vidx)
+Base.getindex(vars::Vars) = vars.names
 Base.getindex(vars::Vars, name::String) = vars.lookup[name]
 has_var(vars::Vars, name::String) = haskey(vars.lookup, name)
 has_var(vars::Vars, idx::Integer) = (idx > 0) && (idx <= length(vars))
@@ -135,6 +136,7 @@ get_initial_data(data::Data, didx::Int64) = data.data[didx]
 set_initial_data!(data::Data, didx::Int64, newdata) = data.data[didx] = newdata
 
 Base.nameof(data::Data, didx::Int64) = get_name(data, didx)
+Base.getindex(data::Data) = data.names
 Base.getindex(data::Data, name::String) = data.lookup[name]
 
 # Functions operating on the collection of continuation data
@@ -183,21 +185,23 @@ get_func(funcs::Functions, fidx::Int64) = funcs.funcs[fidx]
 get_vardeps(funcs::Functions, fidx::Int64) = funcs.vardeps[fidx]
 get_datadeps(funcs::Functions, fidx::Int64) = funcs.datadeps[fidx]
 get_atlasdep(funcs::Functions, fidx::Int64) = funcs.atlasdep[fidx]
-get_groups(funcs::Functions, fidx::Int64) = funcs.memberof[fidx]
+get_memberof(funcs::Functions, fidx::Int64) = funcs.memberof[fidx]
 Base.nameof(funcs::Functions, fidx::Int64) = get_name(funcs, fidx)
+Base.getindex(funcs::Functions) = funcs.names
 Base.getindex(funcs::Functions, name::String) = funcs.lookup[name]
 has_func(funcs::Functions, name::String) = haskey(funcs.lookup, name)
 has_func(funcs::Functions, idx::Integer) = (idx > 0) && (idx <= length(funcs))
 
 function add_func_to_group(funcs::Functions, fidx::Int64, name::Symbol)
-    if haskey(funcs.groups, name)
+    if is_group_closed(funcs, name)
+        throw(ArgumentError("Cannot add function to group that is closed: $name"))
+    elseif has_group(funcs, name)
         groups = funcs.groups[name]
         _idx = findfirst(==(fidx), groups)
         if _idx === nothing
             push!(funcs.memberof[fidx], name)
             push!(groups, fidx)
             idx = length(groups)
-            funcs.group_func[name] = nothing
         else
             idx = _idx
         end
@@ -205,34 +209,13 @@ function add_func_to_group(funcs::Functions, fidx::Int64, name::Symbol)
         push!(funcs.memberof[fidx], name)
         funcs.groups[name] = [fidx]
         idx = 1
-        funcs.group_func[name] = nothing
     end
     return idx
 end
 
-function _invalidate_groups(funcs::Functions, fidx::Int64)
-    for grp in funcs.memberof[fidx]
-        funcs.group_func[grp] = nothing
-    end
-end
-
-function set_vardeps!(funcs::Functions, fidx::Int64, vars::Vector{Int64})
-    funcs.vardeps[fidx] = vars
-    _invalidate_groups(funcs, fidx)
-    return funcs
-end
-
-function set_datadeps!(funcs::Functions, fidx::Int64, data::Vector{Pair{Symbol, Int64}})
-    funcs.datadeps[fidx] = data
-    _invalidate_groups(funcs, fidx)
-    return funcs
-end
-
-function set_atlasdep!(funcs::Functions, fidx::Int64, atlas::Bool)
-    funcs.atlasdep[fidx] = atlas
-    _invalidate_groups(funcs, fidx)
-    return funcs
-end
+set_vardeps!(funcs::Functions, fidx::Int64, vars::Vector{Int64}) = funcs.vardeps[fidx] = vars
+set_datadeps!(funcs::Functions, fidx::Int64, data::Vector{Pair{Symbol, Int64}}) = funcs.datadeps[fidx] = data
+set_atlasdep!(funcs::Functions, fidx::Int64, atlas::Bool) = funcs.atlasdep[fidx] = atlas
 
 _convert_vars(deps::Vector{Int64}, vars) = deps
 _convert_vars(deps::Int64, vars) = [deps]
@@ -281,6 +264,12 @@ function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, mem
     _vars = _convert_vars(vars, funcs.vars)
     _data = _convert_data(data, funcs.data)
     _memberof = _convert_memberof(memberof)
+    # Check that the relevant groups are still open
+    for grp in _memberof
+        if is_group_closed(funcs, grp)
+            throw(ArgumentError("Cannot add function to group that is closed: $grp"))
+        end
+    end
     # All code that could error due to user inputs should be before push! to avoid data structure corruption
     push!(funcs.names, name)
     push!(funcs.dims, dim)
@@ -296,7 +285,6 @@ function add_func!(funcs::Functions, name::String, dim::Integer, func, vars, mem
         else
             funcs.groups[grp] = [fidx]
         end
-        funcs.group_func[grp] = nothing
     end
     return fidx
 end
@@ -305,27 +293,18 @@ end
 
 Base.iterate(funcs::Functions, args...) = iterate(funcs.names, args...)
 get_dim(funcs::Functions, group::Symbol) = sum(funcs.dims[funcs.groups[group]])
-get_groups(funcs::Functions) = keys(funcs.groups)
 get_vars(funcs::Functions) = funcs.vars
 get_data(funcs::Functions) = funcs.data
-has_group(funcs::Functions, name::Symbol) = haskey(funcs.groups, name)
-get_funcs(funcs::Functions, name::Symbol) = funcs.groups[name]
 
-Base.getindex(funcs::Functions, name::Symbol) = get_func(funcs, name)
+get_groups(funcs::Functions) = keys(funcs.groups)
+get_group(funcs::Functions, name::Symbol) = funcs.groups[name]
+has_group(funcs::Functions, name::Symbol) = haskey(funcs.groups, name)
+is_group_closed(funcs::Functions, name::Symbol) = haskey(funcs.group_func, name)
+
+Base.getindex(funcs::Functions, name::Symbol) = get_group_func(funcs, name)
 Base.length(funcs::Functions) = length(funcs.names)
 
-function get_func(funcs::Functions, name::Symbol)
-    if !haskey(funcs.groups, name)
-        throw(ArgumentError("Function group does not exist: $name"))
-    else
-        group_func = funcs.group_func[name]
-        if group_func === nothing
-            return generate_func!(funcs, name)
-        else
-            return group_func
-        end
-    end
-end
+get_group_func(funcs::Functions, name::Symbol) = funcs.group_func[name]
 
 function eval_func!(output, funcs::Functions, fidx::Vector{Int64}, u; atlas, data)
     next = 1
@@ -371,7 +350,7 @@ function generate_func(funcs::Functions, fidx::Vector{Int64})
     return func
 end
 
-function generate_func!(funcs::Functions, name::Symbol)
+function close_group!(funcs::Functions, name::Symbol)
     let funcs = funcs
         grpfunc = eval(generate_func(funcs, funcs.groups[name]))
         return funcs.group_func[name] = (output, u; atlas, data) -> grpfunc(output, funcs, u, atlas=atlas, data=data)
@@ -380,7 +359,7 @@ end
 
 function initialize!(funcs::Functions, prob)
     for name in keys(funcs.groups)
-        generate_func!(funcs, name)
+        close_group!(funcs, name)
     end
 end
 
@@ -409,3 +388,11 @@ add_var!(funcs::Functions, args...; kwargs...) = add_var!(funcs.vars, args...; k
 has_var(funcs::Functions, name) = has_var(funcs.vars, name)
 add_data!(funcs::Functions, args...; kwargs...) = add_data!(funcs.data, args...; kwargs...)
 has_data(funcs::Functions, name) = has_data(funcs.data, name)
+
+#--- Groups of continuation functions
+
+struct FunctionGroup{F, V, D, A}
+    name::Symbol
+    funcs::Functions
+end
+

@@ -81,6 +81,7 @@ add_var!(prob::ProblemStructure, args...; kwargs...) = add_var!(prob.vars, args.
 add_data!(prob::ProblemStructure, args...; kwargs...) = add_data!(prob.data, args...; kwargs...)
 add_func!(prob::ProblemStructure, args...; kwargs...) = add_func!(prob.funcs, args...; kwargs...)
 get_func(prob::ProblemStructure, args...; kwargs...) = get_func(prob.funcs, args...; kwargs...)
+get_group_func(prob::ProblemStructure, args...; kwargs...) = get_group_func(prob.funcs, args...; kwargs...)
 add_mfunc!(prob::ProblemStructure, args...; kwargs...) = add_mfunc!(prob.mfuncs, args...; kwargs...)
 add_par!(prob::ProblemStructure, args...; kwargs...) = add_par!(prob.mfuncs, args...; kwargs...)
 add_pars!(prob::ProblemStructure, args...; kwargs...) = add_pars!(prob.mfuncs, args...; kwargs...)

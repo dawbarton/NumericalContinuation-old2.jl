@@ -30,6 +30,11 @@
     prob["random.option.2"] = "Hello"
     @test prob["random.option.2"] == "Hello"
 
+    NC.add_pars!(prob, ["p$i" for i in 1:10], "MyVar")
+    @test NC.get_dim(funcs, :embedded) == 12
+    @test NC.get_dim(vars) == 11
+    @test_throws ArgumentError NC.add_par!(prob, "p1", "MyVar")
+
     T = NC.get_numtype(prob)
     NC.initialize!(prob)
     u0 = NC.get_initial_u(T, vars)
@@ -43,15 +48,10 @@
 
     NC.emit_signal(prob, :random_signal1, u0, data=d0, prob=prob)
     @test _slot[] == 1
-    embedded = NC.get_func(prob, :embedded)
+    embedded = NC.get_group_func(funcs, :embedded)
     out = zeros(T, NC.get_dim(funcs, :embedded))
     embedded(out, u0, data=d0, atlas=prob)
-    @test out == [sum(1:10) - d0[data["MyData"]], 0.0]
-
-    NC.add_pars!(prob, ["p$i" for i in 1:10], "MyVar")
-    @test NC.get_dim(funcs, :embedded) == 12
-    @test NC.get_dim(vars) == 11
-    @test_throws ArgumentError NC.add_par!(prob, "p1", "MyVar")
+    @test out == [sum(1:10) - d0[data["MyData"]]; 0.0; zeros(10)]
 
     io = IOBuffer()
     show(io, MIME("text/plain"), prob)

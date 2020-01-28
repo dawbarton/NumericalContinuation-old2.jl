@@ -28,7 +28,7 @@
     @test NC.get_funcs(mfuncs) isa NC.Functions
     NC.set_active!(mfuncs, "mfunc1", false)
     out = zeros(2)
-    NC.eval_func!(out, funcs, NC.get_funcs(funcs, :mfunc), zeros(5), data=mfunc_data, atlas=nothing)
+    NC.eval_func!(out, funcs, NC.get_group(funcs, :mfunc), zeros(5), data=mfunc_data, atlas=nothing)
     @test out == [-3.5, 0.5]    
     @test NC.has_mfunc(mfuncs, "mfunc1")
     @test NC.has_mfunc(mfuncs, mfuncs["mfunc1"])
