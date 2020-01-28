@@ -391,8 +391,21 @@ has_data(funcs::Functions, name) = has_data(funcs.data, name)
 
 #--- Groups of continuation functions
 
+struct DataDep{N, I} end
+
 struct FunctionGroup{F, V, D, A}
     name::Symbol
     funcs::Functions
+    vars::Vars
+    fidx::Vector{Int64}
+    f::F
 end
 
+function FunctionGroup(funcs::Functions, name::Symbol)
+    fidx = funcs.groups[name]
+    f = ((f for f in funcs.funcs[fidx])...,)
+    V = ((((vi for vi in funcs.vardeps[fi])...,) for fi in fidx)...,)
+    D = (((((dname, di) for (dname, di) in funcs.datadeps[fi])...,) for fi in fidx)...,)
+    A = ((funcs.atlasdep[fi] for fi in fidx)...,)
+    return (f=f, V=V, D=D, A=A)#FunctionGroup{typeof(f), V, D, A}(name, funcs, get_vars(funcs), fidx, f)
+end
