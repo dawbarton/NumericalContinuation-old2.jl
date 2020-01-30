@@ -393,7 +393,7 @@ has_data(funcs::Functions, name) = has_data(funcs.data, name)
 
 struct DataDep{N, I} end
 
-struct FunctionGroup{F, V, D, A}
+struct FunctionGroup{F, V, DN, D, A}
     name::Symbol
     funcs::Functions
     vars::Vars
@@ -405,7 +405,55 @@ function FunctionGroup(funcs::Functions, name::Symbol)
     fidx = funcs.groups[name]
     f = ((f for f in funcs.funcs[fidx])...,)
     V = ((((vi for vi in funcs.vardeps[fi])...,) for fi in fidx)...,)
-    D = (((((dname, di) for (dname, di) in funcs.datadeps[fi])...,) for fi in fidx)...,)
+    dnames = Dict{Symbol, Int}()
+    DN = Symbol[]
+    for fi in fidx
+        for (dname, di) in funcs.datadeps[fi]
+            if !haskey(dnames, dname)
+                push!(DN, dname)
+                dnames[dname] = length(DN)
+            end
+        end
+    end
+    D = (((((dnames[dname], di) for (dname, di) in funcs.datadeps[fi])...,) for fi in fidx)...,)
     A = ((funcs.atlasdep[fi] for fi in fidx)...,)
-    return (f=f, V=V, D=D, A=A)#FunctionGroup{typeof(f), V, D, A}(name, funcs, get_vars(funcs), fidx, f)
+    return FunctionGroup{typeof(f), V, (DN...,), D, A}(name, funcs, get_vars(funcs), fidx, f)
+end
+
+function generate_func(V::Tuple, DN::NTuple{<:Any, Symbol}, D::Tuple, A::NTuple{<:Any, Bool}; jacobian=false)
+    func_body = quote 
+        vars = func_grp.vars
+        funcs = func_grp.funcs 
+    end
+    # Generate symbols for each continuation variable
+    vdict = Dict{Int64, Symbol}()
+    for vdeps in V
+        for vi in vdeps
+            if !haskey(vdict, vi)
+                vdict[vi] = gensym()
+            end
+        end
+    end
+    # Generate views for each variable (indices can change during continuation so can't interpolate them here)
+    for (vi, vsym) in vdict
+        push!(func_body.args, :($vsym = view(u, vars.indices[$vi])))
+    end
+    # Iterate over all the functions
+    push!(func_body.args, :(next = 1))
+    for fi in eachindex(V)
+        func_call = :(func_grp.f[$fi](view(output, next:next+funcs.dims[$fi]-1)))
+        for vi in V[fi]
+            push!(func_call.args, vdict[vi])
+        end
+        if A[fi]
+            push!(func_call.args, Expr(:kw, :atlas, :atlas))
+        end
+        for (dname, di) in D[fi]
+            push!(func_call.args, Expr(:kw, DN[dname], :(data[$di])))
+        end
+        push!(func_body.args, func_call)
+        push!(func_body.args, :(next = next + funcs.dims[$fi]))
+    end
+    push!(func_body.args, :(return output))
+    return func_body
 end
